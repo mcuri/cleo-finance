@@ -1,6 +1,8 @@
 import io
+import os
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from backend.config import get_settings
 from backend.auth import router as auth_router
 import backend.auth as _auth_module
@@ -68,3 +70,8 @@ async def import_confirm(file: UploadFile = File(...)):
         sheets.append_transaction(t)
         count += 1
     return {"imported": count}
+
+
+_frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+if os.path.isdir(_frontend_dist):
+    app.mount("/", StaticFiles(directory=_frontend_dist, html=True), name="static")
