@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator
-from datetime import date
+from datetime import date as date_type
 from typing import Literal, Optional
 import uuid
 
@@ -8,7 +8,7 @@ TransactionSource = Literal["web", "csv", "telegram"]
 
 
 class TransactionCreate(BaseModel):
-    date: date
+    date: date_type
     amount: float
     merchant: str
     category: str
@@ -46,6 +46,6 @@ class ParsedExpense(BaseModel):
     amount: float
     merchant: str
     category: str
-    date: Optional[date] = None
+    date: Optional[date_type] = None
     notes: Optional[str] = None
     confidence: float = 1.0
