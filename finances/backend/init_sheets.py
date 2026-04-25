@@ -6,10 +6,24 @@ PREDEFINED = [
     "Entertainment", "Health", "Shopping", "Travel", "Income", "Other",
 ]
 
+def _ensure_sheet(svc, spreadsheet_id: str, title: str) -> None:
+    meta = svc.spreadsheets().get(spreadsheetId=spreadsheet_id).execute()
+    existing = {s["properties"]["title"] for s in meta["sheets"]}
+    if title not in existing:
+        svc.spreadsheets().batchUpdate(
+            spreadsheetId=spreadsheet_id,
+            body={"requests": [{"addSheet": {"properties": {"title": title}}}]},
+        ).execute()
+        print(f"  Created sheet: {title}")
+
+
 def init():
     settings = get_settings()
     svc = build_service()
     vals = svc.spreadsheets().values()
+
+    for title in ("Transactions", "Categories", "Logs"):
+        _ensure_sheet(svc, settings.google_sheets_id, title)
 
     vals.update(
         spreadsheetId=settings.google_sheets_id,
