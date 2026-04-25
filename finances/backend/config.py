@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str
     app_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"
+    google_service_account_json: str = ""
 
     model_config = {"env_file": ".env"}
 

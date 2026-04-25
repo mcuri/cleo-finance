@@ -1,3 +1,4 @@
+import json
 import os
 from typing import List
 from datetime import date as date_type
@@ -12,7 +13,12 @@ _SERVICE_ACCOUNT_FILE = os.path.join(os.path.dirname(__file__), "service-account
 
 
 def build_service():
-    creds = Credentials.from_service_account_file(_SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    if os.path.exists(_SERVICE_ACCOUNT_FILE):
+        creds = Credentials.from_service_account_file(_SERVICE_ACCOUNT_FILE, scopes=SCOPES)
+    else:
+        from backend.config import get_settings
+        info = json.loads(get_settings().google_service_account_json)
+        creds = Credentials.from_service_account_info(info, scopes=SCOPES)
     return build("sheets", "v4", credentials=creds)
 
 
