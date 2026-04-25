@@ -1,1 +1,5 @@
 .worktrees/
+*.json
+.superpowers/
+Pre-reqs.md
+claude session.md
