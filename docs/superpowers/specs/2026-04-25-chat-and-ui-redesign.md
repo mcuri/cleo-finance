@@ -134,7 +134,14 @@ Every call to the Anthropic API (chat, expense parsing, receipt parsing) is logg
 [anthropic] model=claude-haiku-4-5-20251001 input_tokens=1234 output_tokens=87 endpoint=chat
 ```
 
-Implementation: a thin `_log_usage(response, endpoint)` helper in `backend/claude_parser.py` and `backend/chat.py` that reads `response.usage` after each `client.messages.create` call and logs via Python's standard `logging` module at `INFO` level.
+Implementation: a thin `_log_usage(response, endpoint)` helper shared across `backend/claude_parser.py` and `backend/chat.py` that reads `response.usage` after each `client.messages.create` call and:
+
+1. Logs to stdout via Python's `logging` module at `INFO` level (visible in Render's Logs tab and local terminal)
+2. Appends a row to a `Logs` tab in the existing Google Spreadsheet via `SheetsClient`
+
+**Logs sheet columns:** `timestamp` · `endpoint` · `model` · `input_tokens` · `output_tokens`
+
+The `Logs` tab is created by `backend/init_sheets.py` (add to the one-time setup script). `SheetsClient` gets a new `append_log` method that writes a single row. Logging to Sheets is fire-and-forget — failures are caught and printed to stdout only, so a Sheets error never breaks a user-facing request.
 
 No new dependencies required.
 
