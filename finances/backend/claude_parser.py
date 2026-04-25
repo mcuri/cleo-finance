@@ -72,6 +72,30 @@ def parse_receipt_image(image_bytes: bytes, media_type: str) -> List[ParsedExpen
     return _parse_response(response.content[0].text)
 
 
+def parse_pdf_statement(pdf_bytes: bytes) -> List[ParsedExpense]:
+    schema = _JSON_SCHEMA.format(cats=", ".join(_CATEGORIES))
+    b64 = base64.standard_b64encode(pdf_bytes).decode()
+    response = _client.messages.create(
+        model=_MODEL,
+        max_tokens=2048,
+        system=_TEXT_SYSTEM,
+        messages=[{
+            "role": "user",
+            "content": [
+                {"type": "document",
+                 "source": {"type": "base64", "media_type": "application/pdf", "data": b64}},
+                {"type": "text",
+                 "text": (
+                     f"Extract all expense transactions and return a JSON array matching: {schema}\n\n"
+                     f"Today is {date.today().isoformat()}. Use today for any missing dates."
+                 )},
+            ],
+        }],
+    )
+    log_usage(response, "parse_pdf_statement")
+    return _parse_response(response.content[0].text)
+
+
 def _parse_response(text: str) -> List[ParsedExpense]:
     try:
         cleaned = text.strip()
