@@ -10,6 +10,7 @@ import backend.auth as _auth_module
 from backend.transactions import router as transactions_router
 from backend.categories import router as categories_router
 from backend.telegram_bot import router as telegram_router
+from backend.chat import router as chat_router
 from backend.csv_import import parse_csv, csv_rows_to_creates, CsvParseError
 from backend.models import Transaction
 from backend.sheets import SheetsClient
@@ -35,6 +36,7 @@ app.include_router(auth_router)
 app.include_router(transactions_router, dependencies=[Depends(_require_auth)])
 app.include_router(categories_router, dependencies=[Depends(_require_auth)])
 app.include_router(telegram_router)
+app.include_router(chat_router, dependencies=[Depends(_require_auth)])
 
 
 @app.get("/health")
