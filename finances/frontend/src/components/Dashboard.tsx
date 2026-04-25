@@ -49,13 +49,15 @@ export default function Dashboard() {
   const totalExpenses = filteredTransactions.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
   const net = totalIncome - totalExpenses;
 
-  const byCategory: Record<string, number> = {};
-  filteredTransactions.filter(t => t.type === "expense").forEach(t => {
-    byCategory[t.category] = (byCategory[t.category] ?? 0) + t.amount;
-  });
-  const categoryData = Object.entries(byCategory)
-    .map(([category, amount]) => ({ category, amount: +amount.toFixed(2) }))
-    .sort((a, b) => b.amount - a.amount);
+  const categoryData = useMemo(() => {
+    const byCategory: Record<string, number> = {};
+    filteredTransactions.filter(t => t.type === "expense").forEach(t => {
+      byCategory[t.category] = (byCategory[t.category] ?? 0) + t.amount;
+    });
+    return Object.entries(byCategory)
+      .map(([category, amount]) => ({ category, amount: +amount.toFixed(2) }))
+      .sort((a, b) => b.amount - a.amount);
+  }, [filteredTransactions]);
 
   const trendData = useMemo(
     () => buildTrendData(filteredTransactions, dateFilter.from, dateFilter.to),

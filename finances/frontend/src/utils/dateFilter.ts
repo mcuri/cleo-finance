@@ -13,7 +13,10 @@ export interface TrendPoint {
 }
 
 function toYMD(d: Date): string {
-  return d.toISOString().slice(0, 10);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
 }
 
 export function presetToRange(preset: Exclude<Preset, 'custom'>): { from: string; to: string } {
@@ -73,8 +76,8 @@ export function buildTrendData(
   const points: TrendPoint[] = [];
   const d = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
   const toMonth = to.slice(0, 7);
-  while (d.toISOString().slice(0, 7) <= toMonth) {
-    const label = d.toISOString().slice(0, 7);
+  while (toYMD(d).slice(0, 7) <= toMonth) {
+    const label = toYMD(d).slice(0, 7);
     const month = transactions.filter(t => t.date.startsWith(label));
     points.push({
       label,
