@@ -1,4 +1,3 @@
-import io
 from unittest.mock import MagicMock, patch
 from datetime import date
 import pytest
