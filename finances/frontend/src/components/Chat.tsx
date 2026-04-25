@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { api } from "../api";
 import type { ChatMessage } from "../types";
 
@@ -21,9 +21,23 @@ export default function Chat() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+    const serializable = messages.map(m =>
+      m.attachment?.dataUrl
+        ? { ...m, attachment: { ...m.attachment, dataUrl: undefined } }
+        : m
+    );
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
+
+  const previewUrl = useMemo(() => {
+    if (!attachedFile?.type.startsWith("image/")) return null;
+    return URL.createObjectURL(attachedFile);
+  }, [attachedFile]);
+
+  useEffect(() => {
+    return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
+  }, [previewUrl]);
 
   const attachFile = (file: File | null | undefined) => {
     if (!file) return;
@@ -37,7 +51,7 @@ export default function Chat() {
 
   const handlePaste = (e: React.ClipboardEvent) => {
     const file = e.clipboardData.files[0];
-    if (file?.type.startsWith("image/")) {
+    if (file && (file.type.startsWith("image/") || file.type === "application/pdf")) {
       e.preventDefault();
       attachFile(file);
     }
@@ -169,9 +183,9 @@ export default function Chat() {
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
             {attachedFile.type.startsWith("image/") ? (
               <img
-                src={URL.createObjectURL(attachedFile)}
+                src={previewUrl ?? ""}
                 alt="preview"
-                style={{ height: 60, borderRadius: 6, border: "1px solid var(--border)" }}
+                style={{ height: 60, width: "auto", borderRadius: 6, border: "1px solid var(--border)" }}
               />
             ) : (
               <span style={{ fontSize: "0.85rem", color: "var(--text-secondary)", background: "var(--surface)", border: "1px solid var(--border)", padding: "0.25rem 0.5rem", borderRadius: 6 }}>
@@ -179,7 +193,7 @@ export default function Chat() {
               </span>
             )}
             <button
-              onClick={() => { setAttachedFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
+              onClick={() => { setAttachedFile(null); setAttachError(""); if (fileInputRef.current) fileInputRef.current.value = ""; }}
               style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", fontSize: "1.1rem", padding: "0 0.25rem" }}
             >
               ×
