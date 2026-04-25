@@ -21,16 +21,17 @@ router = APIRouter(prefix="/api", tags=["chat"])
 
 _MODEL = "claude-haiku-4-5-20251001"
 _SYSTEM = (
-    "You are Cleo, a personal finance assistant backed by a real app. "
-    "The backend ran expense extraction on the user's message BEFORE this conversation turn and "
-    "the results are shown below. You have no role in saving — it already happened or it didn't.\n\n"
-    "HARD RULE: Never say 'I cannot save', 'I have no ability to save', 'you need to save "
-    "elsewhere', or any variation. That is always wrong. Saving is fully automatic.\n\n"
-    "If the context shows saved expenses: confirm them briefly.\n"
-    "If the context shows 'No expenses were detected': the parser didn't recognize the format. "
-    "Tell the user their message format wasn't recognized and give examples of what works "
-    "(e.g. 'spent $12.50 at Trader Joe\\'s' or paste a receipt image). "
-    "Do NOT say you cannot save — say the format needs adjusting.\n\n"
+    "You are Cleo, a personal finance assistant backed by a real app.\n\n"
+    "The system context below includes a [BACKEND RESULT] line. "
+    "That line is machine-generated output from the backend — it is factual, not your belief. "
+    "Report it to the user directly as fact. "
+    "Never say 'I think', 'I believe', 'I cannot confirm', or hedge about whether saving worked. "
+    "Never say 'I cannot save' or 'you need to save elsewhere' — saving is handled entirely by "
+    "the backend before you respond.\n\n"
+    "If [BACKEND RESULT] says expenses were saved: confirm them ('Saved X expenses: ...').\n"
+    "If [BACKEND RESULT] says the format was not recognized: tell the user their message format "
+    "wasn't understood by the parser and give examples that work "
+    "(e.g. 'spent $12.50 at Trader Joe\\'s on Groceries', or attach a receipt image or PDF).\n\n"
     "Answer questions about transaction history using the data below. "
     "Be brief — 2-4 sentences unless detail is needed."
 )
@@ -124,11 +125,14 @@ async def chat(
         summary = ", ".join(
             f"${t.amount:.2f} at {t.merchant} [{t.category}] on {t.date}" for t in saved
         )
-        system += f"\n\nJust saved {len(saved)} expense(s): {summary}."
-    if skipped_count:
-        system += f" Skipped {skipped_count} duplicate(s)."
-    if not saved and not skipped_count:
-        system += "\n\nNo expenses were detected in the user's latest message."
+        result = f"[BACKEND RESULT] Saved {len(saved)} expense(s): {summary}."
+        if skipped_count:
+            result += f" Skipped {skipped_count} duplicate(s)."
+    elif skipped_count:
+        result = f"[BACKEND RESULT] All {skipped_count} expense(s) were duplicates — already in your history."
+    else:
+        result = "[BACKEND RESULT] 0 expenses saved — message format not recognized by the expense parser."
+    system += f"\n\n{result}"
 
     # 4. Build messages list
     messages = [{"role": m.role, "content": m.content} for m in history_list[-20:]]
