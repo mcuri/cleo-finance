@@ -1,77 +1,113 @@
+:root {
+  --bg: #0f172a;
+  --surface: #1e293b;
+  --border: #334155;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #475569;
+  --accent: #6366f1;
+  --income: #34d399;
+  --expense: #f87171;
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 16px;
-  background: #fafafa;
-  color: #1a1a1a;
+  background: var(--bg);
+  color: var(--text-primary);
 }
 
 nav {
-  background: #fff;
-  border-bottom: 1px solid #e5e5e5;
-  padding: 0.75rem 1rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 1.25rem;
   display: flex;
   flex-wrap: wrap;
   gap: 1.25rem;
   align-items: center;
 }
 
-nav a { text-decoration: none; color: #555; font-weight: 500; }
-nav a.active { color: #6c47ff; }
+nav a { text-decoration: none; color: var(--text-secondary); font-weight: 500; transition: color 0.15s; }
+nav a:hover { color: var(--text-primary); }
+nav a.active { color: var(--accent); border-bottom: 2px solid var(--accent); padding-bottom: 2px; }
+.nav-logo { color: var(--accent); font-weight: 700; font-size: 1.1rem; letter-spacing: -0.5px; }
 
-main { padding: 1rem; }
+main { padding: 1.5rem; }
 
-input, select, button, textarea {
-  font-size: 16px;
-}
+input, select, button, textarea { font-size: 16px; font-family: inherit; }
 
 table { width: 100%; border-collapse: collapse; }
-th, td { padding: 0.5rem; text-align: left; }
-thead tr { border-bottom: 2px solid #e5e5e5; }
-tbody tr { border-bottom: 1px solid #f0f0f0; }
+th {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+th, td { padding: 0.625rem 0.5rem; text-align: left; }
+thead tr { border-bottom: 1px solid var(--border); }
+tbody tr { border-bottom: 1px solid var(--bg); color: var(--text-primary); }
+tbody tr:hover { background: var(--surface); }
 
 .card {
-  background: #fff;
-  border: 1px solid #e5e5e5;
-  border-radius: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
   padding: 1rem;
 }
 
-.summary-cards {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  margin-bottom: 1.5rem;
-}
-
+.summary-cards { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
 .summary-cards .card { flex: 1; min-width: 140px; }
 
 button {
   cursor: pointer;
   padding: 0.5rem 1rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-primary);
+  transition: opacity 0.15s;
 }
 
 button[type="submit"], button.primary {
-  background: #6c47ff;
+  background: var(--accent);
   color: #fff;
-  border-color: #6c47ff;
+  border-color: var(--accent);
 }
+
+button:disabled { opacity: 0.45; cursor: not-allowed; }
 
 input[type="text"], input[type="number"], input[type="date"],
-input[type="month"], select {
+input[type="month"], select, textarea {
   width: 100%;
-  padding: 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
   margin-top: 0.25rem;
+  background: var(--surface);
+  color: var(--text-primary);
 }
 
-label { display: block; margin-bottom: 0.75rem; font-weight: 500; }
+input::placeholder, textarea::placeholder { color: var(--text-muted); }
+select option { background: var(--surface); }
 
-.amount-income { color: #16a34a; }
-.amount-expense { color: #dc2626; }
+label { display: block; margin-bottom: 0.75rem; font-weight: 500; color: var(--text-secondary); font-size: 0.9rem; }
+
+h1 { color: var(--text-primary); margin-top: 0; }
+h2 { color: var(--text-primary); }
+h3 { color: var(--text-primary); }
+p { color: var(--text-secondary); }
+code {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.1rem 0.4rem;
+  font-size: 0.875em;
+  color: var(--text-secondary);
+}
+
+.amount-income { color: var(--income); }
+.amount-expense { color: var(--expense); }
