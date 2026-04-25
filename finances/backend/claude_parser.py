@@ -45,7 +45,7 @@ def parse_expense_text(text: str) -> List[ParsedExpense]:
     )
     response = _client.messages.create(
         model=_MODEL,
-        max_tokens=1024,
+        max_tokens=4096,
         system=_TEXT_SYSTEM,
         messages=[{"role": "user", "content": prompt}],
     )
