@@ -7,7 +7,6 @@ import {
 import { api } from "../api";
 import type { Transaction } from "../types";
 
-function monthKey(d: string) { return d.slice(0, 7); }
 function currentMonth() { return new Date().toISOString().slice(0, 7); }
 function lastNMonths(n: number): string[] {
   return Array.from({ length: n }, (_, i) => {
@@ -78,7 +77,7 @@ export default function Dashboard() {
         <BarChart data={categoryData} margin={{ left: 10 }}>
           <XAxis dataKey="category" tick={{ fontSize: 12 }} />
           <YAxis />
-          <Tooltip formatter={(v: number) => `$${v.toFixed(2)}`} />
+          <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`} />
           <Bar dataKey="amount" fill="#6c47ff" radius={[4, 4, 0, 0]} />
         </BarChart>
       </ResponsiveContainer>
@@ -88,7 +87,7 @@ export default function Dashboard() {
         <LineChart data={trendData} margin={{ left: 10 }}>
           <XAxis dataKey="month" tick={{ fontSize: 12 }} />
           <YAxis />
-          <Tooltip formatter={(v: number) => `$${v.toFixed(2)}`} />
+          <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`} />
           <Legend />
           <Line type="monotone" dataKey="expenses" stroke="#dc2626" strokeWidth={2} dot={false} />
           <Line type="monotone" dataKey="income" stroke="#16a34a" strokeWidth={2} dot={false} />
