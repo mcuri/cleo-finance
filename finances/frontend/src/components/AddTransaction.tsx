@@ -49,7 +49,7 @@ export default function AddTransaction() {
   return (
     <div style={{ maxWidth: 480, margin: "0 auto" }}>
       <h1>Add Transaction</h1>
-      {error && <p style={{ color: "#dc2626" }}>{error}</p>}
+      {error && <p className="amount-expense">{error}</p>}
       <form onSubmit={handleSubmit}>
         <label>Date <input type="date" value={form.date} onChange={set("date")} /></label>
         <label>Amount ($) <input type="number" step="0.01" min="0.01" value={form.amount} onChange={set("amount")} placeholder="0.00" /></label>

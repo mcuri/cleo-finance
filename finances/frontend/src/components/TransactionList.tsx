@@ -27,53 +27,53 @@ export default function TransactionList() {
     <div style={{ maxWidth: 920, margin: "0 auto" }}>
       <h1>Transactions</h1>
       <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
-        <input type="month" value={month} onChange={e => setMonth(e.target.value)}
-          style={{ width: "auto" }} />
-        <select value={type} onChange={e => setType(e.target.value as typeof type)}
-          style={{ width: "auto" }}>
+        <input type="month" value={month} onChange={e => setMonth(e.target.value)} style={{ width: "auto" }} />
+        <select value={type} onChange={e => setType(e.target.value as typeof type)} style={{ width: "auto" }}>
           <option value="all">All types</option>
           <option value="income">Income</option>
           <option value="expense">Expense</option>
         </select>
-        <select value={category} onChange={e => setCategory(e.target.value)}
-          style={{ width: "auto" }}>
+        <select value={category} onChange={e => setCategory(e.target.value)} style={{ width: "auto" }}>
           <option value="all">All categories</option>
           {categories.map(c => <option key={c} value={c}>{c}</option>)}
         </select>
       </div>
-      <div style={{ overflowX: "auto" }}>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th><th>Merchant</th><th>Category</th>
-              <th style={{ textAlign: "right" }}>Amount</th>
-              <th>Type</th><th>Source</th><th />
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map(t => (
-              <tr key={t.id}>
-                <td>{t.date}</td>
-                <td>{t.merchant}</td>
-                <td>{t.category}</td>
-                <td style={{ textAlign: "right" }}
-                  className={t.type === "expense" ? "amount-expense" : "amount-income"}>
-                  {t.type === "expense" ? "-" : "+"}${t.amount.toFixed(2)}
-                </td>
-                <td>{t.type}</td>
-                <td>{t.source}</td>
-                <td>
-                  <button onClick={() => handleDelete(t.id)}
-                    style={{ color: "#dc2626", border: "none", background: "none", padding: "0.25rem" }}>
-                    ×
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {filtered.length === 0 && <p style={{ color: "#888" }}>No transactions for this filter.</p>}
+
+      {filtered.length === 0
+        ? <p>No transactions for this period.</p>
+        : (
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th><th>Merchant</th><th>Category</th>
+                  <th style={{ textAlign: "right" }}>Amount</th><th>Type</th><th>Source</th><th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(t => (
+                  <tr key={t.id}>
+                    <td style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>{t.date}</td>
+                    <td>{t.merchant}</td>
+                    <td style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>{t.category}</td>
+                    <td style={{ textAlign: "right" }} className={t.type === "income" ? "amount-income" : "amount-expense"}>
+                      {t.type === "income" ? "+" : "-"}${t.amount.toFixed(2)}
+                    </td>
+                    <td style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>{t.type}</td>
+                    <td style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>{t.source}</td>
+                    <td>
+                      <button
+                        onClick={() => handleDelete(t.id)}
+                        style={{ background: "none", border: "none", color: "var(--expense)", padding: "0 0.25rem", fontSize: "1rem" }}
+                      >×</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )
+      }
     </div>
   );
 }

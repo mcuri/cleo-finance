@@ -42,30 +42,38 @@ export default function CsvImport() {
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <h1>Import CSV</h1>
       <p>Required columns: <code>date</code>, <code>amount</code>, <code>merchant</code>, <code>category</code>, <code>type</code></p>
-      <p style={{ fontSize: "0.875rem", color: "#555" }}>Date format: YYYY-MM-DD. Type: <code>income</code> or <code>expense</code>.</p>
+      <p style={{ fontSize: "0.875rem" }}>Date format: YYYY-MM-DD. Type: <code>income</code> or <code>expense</code>.</p>
 
-      {error && <p style={{ color: "#dc2626" }}>{error}</p>}
-      {result && <p style={{ color: "#16a34a" }}>{result}</p>}
+      {error && <p className="amount-expense">{error}</p>}
+      {result && <p className="amount-income">{result}</p>}
 
       <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", marginBottom: "1rem" }}>
-        <input type="file" accept=".csv"
+        <input type="file" accept=".csv" style={{ width: "auto", marginTop: 0 }}
           onChange={e => { setFile(e.target.files?.[0] ?? null); setPreview(null); setResult(null); }} />
-        <button onClick={handlePreview} disabled={!file}>Preview</button>
+        <button onClick={handlePreview} disabled={!file} style={{ width: "auto" }}>Preview</button>
       </div>
 
       {preview && (
         <>
           {preview.errors.length > 0 && (
-            <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: 6, padding: "0.75rem", marginBottom: "1rem" }}>
-              <strong>Rows with errors (will be skipped):</strong>
+            <div style={{
+              background: "var(--surface)",
+              border: "1px solid var(--expense)",
+              borderRadius: 6,
+              padding: "0.75rem",
+              marginBottom: "1rem",
+            }}>
+              <strong style={{ color: "var(--expense)" }}>Rows with errors (skipped):</strong>
               {preview.errors.map(e => (
-                <div key={e.row} style={{ fontSize: "0.875rem" }}>Row {e.row}: {e.reason}</div>
+                <div key={e.row} style={{ fontSize: "0.875rem", color: "var(--text-secondary)", marginTop: "0.25rem" }}>
+                  Row {e.row}: {e.reason}
+                </div>
               ))}
             </div>
           )}
 
           <h3>{preview.valid_rows.length} valid rows</h3>
-          <div style={{ overflowX: "auto" }}>
+          <div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: "1rem" }}>
             <table>
               <thead>
                 <tr>
@@ -79,7 +87,7 @@ export default function CsvImport() {
                     <td>{r.date}</td>
                     <td>{r.merchant}</td>
                     <td>{r.category}</td>
-                    <td style={{ textAlign: "right" }}>${r.amount.toFixed(2)}</td>
+                    <td style={{ textAlign: "right" }} className="amount-expense">${r.amount.toFixed(2)}</td>
                     <td>{r.type}</td>
                   </tr>
                 ))}
@@ -91,7 +99,6 @@ export default function CsvImport() {
             className="primary"
             onClick={handleConfirm}
             disabled={importing || preview.valid_rows.length === 0}
-            style={{ marginTop: "1rem" }}
           >
             {importing ? "Importing…" : `Import ${preview.valid_rows.length} transactions`}
           </button>
