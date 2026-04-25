@@ -59,8 +59,15 @@ def test_chat_saves_parsed_expense(client, mock_sheets):
 
 
 def test_chat_skips_duplicate(client, mock_sheets):
-    from backend.models import ParsedExpense
-    mock_sheets.find_duplicate.return_value = True
+    from backend.models import ParsedExpense, Transaction, TransactionCreate
+    existing = Transaction.from_create(
+        TransactionCreate(
+            date=date(2026, 4, 18), amount=15.66, merchant="The Brazilian Spot",
+            category="Restaurants", type="expense",
+        ),
+        source="web",
+    )
+    mock_sheets.get_all_transactions.return_value = [existing]
     parsed = ParsedExpense(
         amount=15.66, merchant="The Brazilian Spot",
         category="Restaurants", date=date(2026, 4, 18), confidence=0.9,
@@ -76,6 +83,22 @@ def test_chat_skips_duplicate(client, mock_sheets):
 
     assert resp.status_code == 200
     mock_sheets.append_transaction.assert_not_called()
+
+
+def test_chat_skips_within_batch_duplicate(client, mock_sheets):
+    from backend.models import ParsedExpense
+    parsed = ParsedExpense(
+        amount=15.66, merchant="The Brazilian Spot",
+        category="Restaurants", date=date(2026, 4, 18), confidence=0.9,
+    )
+    with patch("backend.chat.parse_expense_text", return_value=[parsed, parsed]), \
+         patch("backend.chat.anthropic.Anthropic") as mock_cls, \
+         patch("backend.chat.log_usage"):
+        _mock_claude(mock_cls, "Saved 1.")
+        resp = client.post("/api/chat", data={"message": "...", "history": "[]"})
+
+    assert resp.status_code == 200
+    mock_sheets.append_transaction.assert_called_once()
 
 
 def test_chat_with_image_file(client, mock_sheets):

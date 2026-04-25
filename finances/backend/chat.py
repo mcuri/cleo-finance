@@ -60,11 +60,16 @@ def _save_expenses(
 ) -> Tuple[List[Transaction], int]:
     saved: List[Transaction] = []
     skipped = 0
+    # Fetch once; also track newly saved keys so within-batch duplicates are caught
+    existing = sheets.get_all_transactions()
+    seen = {(t.date, t.amount, t.merchant.lower()) for t in existing}
     for parsed in parsed_list:
         expense_date = parsed.date or date_type.today()
-        if sheets.find_duplicate(expense_date, parsed.amount, parsed.merchant):
+        key = (expense_date, parsed.amount, parsed.merchant.lower())
+        if key in seen:
             skipped += 1
         else:
+            seen.add(key)
             t = Transaction.from_create(
                 TransactionCreate(
                     date=expense_date,
