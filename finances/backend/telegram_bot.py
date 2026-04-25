@@ -27,6 +27,13 @@ def _verify_secret(token: Optional[str]) -> bool:
 async def _save_and_reply(chat_id: int, parsed, source_label: str) -> None:
     sheets = SheetsClient(spreadsheet_id=get_settings().google_sheets_id)
     expense_date = parsed.date or date.today()
+    if sheets.find_duplicate(expense_date, parsed.amount, parsed.merchant):
+        bot = _get_bot()
+        await bot.send_message(
+            chat_id=chat_id,
+            text=f"Skipped duplicate: ${parsed.amount:.2f} at {parsed.merchant} on {expense_date}",
+        )
+        return
     t = Transaction.from_create(
         TransactionCreate(
             date=expense_date,
