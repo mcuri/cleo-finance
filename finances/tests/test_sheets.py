@@ -64,6 +64,8 @@ def test_append_log(sheets_client, mock_service):
     kwargs = mock_service.spreadsheets().values().append.call_args[1]
     assert kwargs["range"] == "Logs!A:E"
     row = kwargs["body"]["values"][0]
+    assert len(row) == 5
+    assert "T" in row[0]  # ISO-8601 timestamp sanity check
     assert row[1] == "chat"
     assert row[2] == "claude-haiku-4-5-20251001"
     assert row[3] == 100

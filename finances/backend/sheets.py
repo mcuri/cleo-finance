@@ -1,7 +1,7 @@
 import json
 import os
 from typing import List
-from datetime import date as date_type
+from datetime import date as date_type, datetime
 
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
@@ -149,7 +149,6 @@ class SheetsClient:
         return False
 
     def append_log(self, endpoint: str, model: str, input_tokens: int, output_tokens: int) -> None:
-        from datetime import datetime
         row = [datetime.utcnow().isoformat(), endpoint, model, input_tokens, output_tokens]
         self._values().append(
             spreadsheetId=self.spreadsheet_id,
