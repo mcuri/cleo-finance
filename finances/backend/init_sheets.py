@@ -3,7 +3,7 @@ from backend.config import get_settings
 
 PREDEFINED = [
     "Utilities", "Groceries", "Restaurants", "Transport",
-    "Entertainment", "Health", "Shopping", "Travel", "Income", "Other",
+    "Entertainment", "Health", "Shopping", "Travel", "Subscriptions", "Income", "Other",
 ]
 
 def _ensure_sheet(svc, spreadsheet_id: str, title: str) -> None:

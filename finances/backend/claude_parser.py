@@ -15,7 +15,7 @@ _MODEL = "claude-haiku-4-5-20251001"
 
 _CATEGORIES = [
     "Utilities", "Groceries", "Restaurants", "Transport",
-    "Entertainment", "Health", "Shopping", "Travel", "Income", "Other",
+    "Entertainment", "Health", "Shopping", "Travel", "Subscriptions", "Income", "Other",
 ]
 
 _TEXT_SYSTEM = (
