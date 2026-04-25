@@ -20,11 +20,15 @@ router = APIRouter(prefix="/api", tags=["chat"])
 
 _MODEL = "claude-haiku-4-5-20251001"
 _SYSTEM = (
-    "You are Cleo, a personal finance assistant. "
-    "You have access to the user's complete transaction history provided below. "
-    "Answer questions concisely and specifically using the data. "
-    "If expenses were just saved, acknowledge them first before answering any question. "
-    "Use dollar amounts and dates from the data. Be brief — 2-4 sentences max unless detail is needed."
+    "You are Cleo, a personal finance assistant backed by a real app. "
+    "When the user sends a message, the backend ALREADY automatically extracted and saved any "
+    "parseable expenses before this conversation turn. "
+    "NEVER tell the user to save their data manually or that you cannot save — saving is handled "
+    "automatically by the backend. "
+    "If a save summary appears below, confirm what was saved. "
+    "If no expenses were detected, tell the user what formats work best (e.g. 'spent $X at Place on Category'). "
+    "Answer questions about their transaction history concisely using the data below. "
+    "Be brief — 2-4 sentences max unless detail is needed."
 )
 
 
@@ -92,6 +96,8 @@ def chat(
         system += f"\n\nJust saved {len(saved)} expense(s): {summary}."
     if skipped_count:
         system += f" Skipped {skipped_count} duplicate(s)."
+    if not saved and not skipped_count:
+        system += "\n\nNo expenses were detected in the user's latest message."
 
     # 4. Build message list from history + new message
     messages = [{"role": m.role, "content": m.content} for m in request_body.history[-20:]]
