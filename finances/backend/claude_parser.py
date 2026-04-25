@@ -69,7 +69,10 @@ def parse_receipt_image(image_bytes: bytes, media_type: str) -> Optional[ParsedE
 
 def _parse_response(text: str) -> Optional[ParsedExpense]:
     try:
-        data = json.loads(text.strip())
+        cleaned = text.strip()
+        if cleaned.startswith("```"):
+            cleaned = cleaned.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
+        data = json.loads(cleaned)
         return ParsedExpense(**data)
     except Exception:
         return None
