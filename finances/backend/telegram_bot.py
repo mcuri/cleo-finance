@@ -50,29 +50,31 @@ async def _save_and_reply(chat_id: int, parsed, source_label: str) -> None:
 
 
 async def _handle_text(chat_id: int, text: str) -> None:
-    parsed = parse_expense_text(text)
-    if not parsed or parsed.confidence < 0.5:
+    parsed_list = parse_expense_text(text)
+    if not parsed_list:
         bot = _get_bot()
         await bot.send_message(
             chat_id=chat_id,
-            text="Couldn't extract an expense from that. Try something like: 'lunch at Itaim for 45 reais' or 'paid 120 for Uber'",
+            text="Couldn't extract any expenses from that. Try something like: 'lunch at Itaim for 45 reais' or 'paid 120 for Uber'",
         )
         return
-    await _save_and_reply(chat_id, parsed, "text")
+    for parsed in parsed_list:
+        await _save_and_reply(chat_id, parsed, "text")
 
 
 async def _handle_photo(chat_id: int, file_id: str) -> None:
     bot = _get_bot()
     tg_file = await bot.get_file(file_id)
     image_bytes = bytes(await tg_file.download_as_bytearray())
-    parsed = parse_receipt_image(image_bytes, "image/jpeg")
-    if not parsed or parsed.confidence < 0.5:
+    parsed_list = parse_receipt_image(image_bytes, "image/jpeg")
+    if not parsed_list:
         await bot.send_message(
             chat_id=chat_id,
             text="Couldn't read that receipt. Send the details as text instead.",
         )
         return
-    await _save_and_reply(chat_id, parsed, "receipt")
+    for parsed in parsed_list:
+        await _save_and_reply(chat_id, parsed, "receipt")
 
 
 @router.post("/webhook")
