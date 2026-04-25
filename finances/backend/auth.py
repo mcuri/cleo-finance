@@ -80,7 +80,7 @@ def callback(request: Request, code: str):
     email = info.get("email", "")
     if email != get_settings().allowed_email:
         raise HTTPException(status_code=403, detail="Access denied")
-    response = RedirectResponse(url="/")
+    response = RedirectResponse(url=get_settings().frontend_url)
     _set_session(response, email)
     return response
 
