@@ -1,5 +1,6 @@
 import io
 import os
+import logging
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -12,6 +13,8 @@ from backend.telegram_bot import router as telegram_router
 from backend.csv_import import parse_csv, csv_rows_to_creates, CsvParseError
 from backend.models import Transaction
 from backend.sheets import SheetsClient
+
+logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
 
 app = FastAPI(title="Finance Tracker")
 

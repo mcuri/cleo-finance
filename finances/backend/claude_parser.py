@@ -7,6 +7,7 @@ import anthropic
 
 from backend.config import get_settings
 from backend.models import ParsedExpense
+from backend.anthropic_logger import log_usage
 
 _client = anthropic.Anthropic(api_key=get_settings().anthropic_api_key)
 
@@ -48,6 +49,7 @@ def parse_expense_text(text: str) -> List[ParsedExpense]:
         system=_TEXT_SYSTEM,
         messages=[{"role": "user", "content": prompt}],
     )
+    log_usage(response, "parse_expense_text")
     return _parse_response(response.content[0].text)
 
 
@@ -66,6 +68,7 @@ def parse_receipt_image(image_bytes: bytes, media_type: str) -> List[ParsedExpen
             ],
         }],
     )
+    log_usage(response, "parse_receipt_image")
     return _parse_response(response.content[0].text)
 
 
