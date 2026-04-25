@@ -1,17 +1,18 @@
+import base64
 import json
 import logging
 from datetime import date as date_type
-from typing import List
+from typing import List, Optional, Tuple
 
 import anthropic
 import backend.chat as _self
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from backend.anthropic_logger import log_usage
-from backend.claude_parser import parse_expense_text
+from backend.claude_parser import parse_expense_text, parse_pdf_statement, parse_receipt_image
 from backend.config import get_settings
-from backend.models import Transaction, TransactionCreate
+from backend.models import ParsedExpense, Transaction, TransactionCreate
 from backend.sheets import SheetsClient
 
 logger = logging.getLogger(__name__)
@@ -26,7 +27,8 @@ _SYSTEM = (
     "NEVER tell the user to save their data manually or that you cannot save — saving is handled "
     "automatically by the backend. "
     "If a save summary appears below, confirm what was saved. "
-    "If no expenses were detected, tell the user what formats work best (e.g. 'spent $X at Place on Category'). "
+    "If no expenses were detected, tell the user what formats work best "
+    "(e.g. 'spent $X at Place on Category'). "
     "Answer questions about their transaction history concisely using the data below. "
     "Be brief — 2-4 sentences max unless detail is needed."
 )
@@ -35,11 +37,6 @@ _SYSTEM = (
 class ChatMessage(BaseModel):
     role: str
     content: str
-
-
-class ChatRequest(BaseModel):
-    message: str
-    history: List[ChatMessage] = []
 
 
 class ChatResponse(BaseModel):
@@ -54,18 +51,16 @@ def _get_sheets_client():
     return _self.get_sheets_client()
 
 
-@router.post("/chat", response_model=ChatResponse)
-def chat(
-    request_body: ChatRequest,
-    sheets: SheetsClient = Depends(_get_sheets_client),
-):
-    # 1. Parse and save any expenses embedded in the message
+def _save_expenses(
+    parsed_list: List[ParsedExpense],
+    sheets: SheetsClient,
+) -> Tuple[List[Transaction], int]:
     saved: List[Transaction] = []
-    skipped_count = 0
-    for parsed in parse_expense_text(request_body.message):
+    skipped = 0
+    for parsed in parsed_list:
         expense_date = parsed.date or date_type.today()
         if sheets.find_duplicate(expense_date, parsed.amount, parsed.merchant):
-            skipped_count += 1
+            skipped += 1
         else:
             t = Transaction.from_create(
                 TransactionCreate(
@@ -80,8 +75,40 @@ def chat(
             )
             sheets.append_transaction(t)
             saved.append(t)
+    return saved, skipped
 
-    # 2. Fetch all transactions (after saving, so new ones are included)
+
+@router.post("/chat", response_model=ChatResponse)
+async def chat(
+    message: str = Form(...),
+    history: str = Form("[]"),
+    file: Optional[UploadFile] = File(None),
+    sheets: SheetsClient = Depends(_get_sheets_client),
+):
+    history_list = [ChatMessage(**m) for m in json.loads(history)]
+
+    # 1. Parse expenses and build user content block
+    saved: List[Transaction] = []
+    skipped_count = 0
+    user_content: object = message
+
+    if file:
+        file_bytes = await file.read()
+        b64 = base64.standard_b64encode(file_bytes).decode()
+        ct = file.content_type or ""
+        if ct.startswith("image/"):
+            saved, skipped_count = _save_expenses(parse_receipt_image(file_bytes, ct), sheets)
+            file_block = {"type": "image", "source": {"type": "base64", "media_type": ct, "data": b64}}
+        elif ct == "application/pdf":
+            saved, skipped_count = _save_expenses(parse_pdf_statement(file_bytes), sheets)
+            file_block = {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": b64}}
+        else:
+            raise HTTPException(status_code=400, detail="Unsupported file type. Send an image or PDF.")
+        user_content = [file_block, {"type": "text", "text": message}]
+    else:
+        saved, skipped_count = _save_expenses(parse_expense_text(message), sheets)
+
+    # 2. Fetch all transactions (after saving)
     transactions = sheets.get_all_transactions()
     tx_json = json.dumps([
         {"date": str(t.date), "amount": t.amount, "merchant": t.merchant,
@@ -89,19 +116,21 @@ def chat(
         for t in transactions
     ])
 
-    # 3. Build system prompt with transaction context and save summary
+    # 3. Build system prompt
     system = _SYSTEM + f"\n\nTransaction data: {tx_json}"
     if saved:
-        summary = ", ".join(f"${t.amount:.2f} at {t.merchant} [{t.category}] on {t.date}" for t in saved)
+        summary = ", ".join(
+            f"${t.amount:.2f} at {t.merchant} [{t.category}] on {t.date}" for t in saved
+        )
         system += f"\n\nJust saved {len(saved)} expense(s): {summary}."
     if skipped_count:
         system += f" Skipped {skipped_count} duplicate(s)."
     if not saved and not skipped_count:
         system += "\n\nNo expenses were detected in the user's latest message."
 
-    # 4. Build message list from history + new message
-    messages = [{"role": m.role, "content": m.content} for m in request_body.history[-20:]]
-    messages.append({"role": "user", "content": request_body.message})
+    # 4. Build messages list
+    messages = [{"role": m.role, "content": m.content} for m in history_list[-20:]]
+    messages.append({"role": "user", "content": user_content})
 
     # 5. Call Claude
     client = anthropic.Anthropic(api_key=get_settings().anthropic_api_key)
