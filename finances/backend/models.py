@@ -4,7 +4,7 @@ from typing import Literal, Optional
 import uuid
 
 TransactionType = Literal["income", "expense"]
-TransactionSource = Literal["web", "csv", "telegram"]
+TransactionSource = Literal["web", "csv", "telegram", "credit_card"]
 
 
 class TransactionCreate(BaseModel):
@@ -21,6 +21,15 @@ class TransactionCreate(BaseModel):
         if v <= 0:
             raise ValueError("amount must be positive")
         return v
+
+
+class TransactionUpdate(BaseModel):
+    date: Optional[date_type] = None
+    amount: Optional[float] = None
+    merchant: Optional[str] = None
+    category: Optional[str] = None
+    type: Optional[TransactionType] = None
+    notes: Optional[str] = None
 
 
 class Transaction(TransactionCreate):

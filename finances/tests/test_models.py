@@ -42,3 +42,24 @@ def test_transaction_from_create_sets_id_and_source():
     t = Transaction.from_create(create, source="web")
     assert t.source == "web"
     assert len(t.id) > 0
+
+def test_transaction_update_accepts_all_fields():
+    from backend.models import TransactionUpdate
+    u = TransactionUpdate(
+        date=date(2026, 4, 25),
+        amount=50.0,
+        merchant="Whole Foods",
+        category="Groceries",
+        type="expense",
+        notes="weekly shop",
+    )
+    assert u.date == date(2026, 4, 25)
+    assert u.amount == 50.0
+    assert u.type == "expense"
+
+def test_transaction_update_all_fields_optional():
+    from backend.models import TransactionUpdate
+    u = TransactionUpdate()
+    assert u.date is None
+    assert u.amount is None
+    assert u.type is None
