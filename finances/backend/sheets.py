@@ -147,3 +147,13 @@ class SheetsClient:
                 ).execute()
                 return True
         return False
+
+    def append_log(self, endpoint: str, model: str, input_tokens: int, output_tokens: int) -> None:
+        from datetime import datetime
+        row = [datetime.utcnow().isoformat(), endpoint, model, input_tokens, output_tokens]
+        self._values().append(
+            spreadsheetId=self.spreadsheet_id,
+            range="Logs!A:E",
+            valueInputOption="RAW",
+            body={"values": [row]},
+        ).execute()

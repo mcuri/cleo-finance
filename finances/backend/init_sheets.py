@@ -25,7 +25,14 @@ def init():
         valueInputOption="RAW",
         body={"values": rows},
     ).execute()
-    print("Sheets initialised.")
+
+    vals.update(
+        spreadsheetId=settings.google_sheets_id,
+        range="Logs!A1:E1",
+        valueInputOption="RAW",
+        body={"values": [["timestamp", "endpoint", "model", "input_tokens", "output_tokens"]]},
+    ).execute()
+    print("Sheets initialised (Transactions, Categories, Logs).")
 
 if __name__ == "__main__":
     init()

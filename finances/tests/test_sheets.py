@@ -58,3 +58,13 @@ def test_get_categories(sheets_client, mock_service):
     assert cats[0].name == "Groceries"
     assert cats[0].predefined is True
     assert cats[1].predefined is False
+
+def test_append_log(sheets_client, mock_service):
+    sheets_client.append_log("chat", "claude-haiku-4-5-20251001", 100, 50)
+    kwargs = mock_service.spreadsheets().values().append.call_args[1]
+    assert kwargs["range"] == "Logs!A:E"
+    row = kwargs["body"]["values"][0]
+    assert row[1] == "chat"
+    assert row[2] == "claude-haiku-4-5-20251001"
+    assert row[3] == 100
+    assert row[4] == 50
