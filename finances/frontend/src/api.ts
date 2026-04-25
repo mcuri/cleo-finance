@@ -1,4 +1,4 @@
-import type { Transaction, TransactionCreate, Category, ImportPreviewRow, ImportPreviewError } from "./types";
+import type { Transaction, TransactionCreate, Category, ImportPreviewRow, ImportPreviewError, ChatMessage } from "./types";
 
 const BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -46,4 +46,9 @@ export const api = {
     form.append("file", file);
     return req<{ imported: number }>("/api/import/confirm", { method: "POST", body: form });
   },
+  chat: (message: string, history: ChatMessage[]) =>
+    req<{ reply: string }>("/api/chat", {
+      method: "POST",
+      body: JSON.stringify({ message, history }),
+    }),
 };
