@@ -42,4 +42,5 @@ export interface ImportPreviewError {
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+  attachment?: { type: "image" | "pdf"; label: string; dataUrl?: string };
 }
