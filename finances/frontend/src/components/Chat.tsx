@@ -19,6 +19,7 @@ export default function Chat() {
   const [attachError, setAttachError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const sentBlobUrls = useRef<string[]>([]);
 
   useEffect(() => {
     const serializable = messages.map(m =>
@@ -38,6 +39,10 @@ export default function Chat() {
   useEffect(() => {
     return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
   }, [previewUrl]);
+
+  useEffect(() => {
+    return () => { sentBlobUrls.current.forEach(URL.revokeObjectURL); };
+  }, []);
 
   const attachFile = (file: File | null | undefined) => {
     if (!file) return;
@@ -64,10 +69,12 @@ export default function Chat() {
     let attachment: ChatMessage["attachment"] | undefined;
     if (attachedFile) {
       if (attachedFile.type.startsWith("image/")) {
+        const dataUrl = URL.createObjectURL(attachedFile);
+        sentBlobUrls.current.push(dataUrl);
         attachment = {
           type: "image",
           label: attachedFile.name,
-          dataUrl: URL.createObjectURL(attachedFile),
+          dataUrl,
         };
       } else {
         attachment = { type: "pdf", label: attachedFile.name };
