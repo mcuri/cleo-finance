@@ -2,20 +2,42 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import type { Transaction } from "../types";
 
+type SortKey = "date" | "merchant" | "amount";
+type SortDir = "asc" | "desc";
+
 export default function TransactionList() {
   const [all, setAll] = useState<Transaction[]>([]);
   const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
   const [type, setType] = useState<"all" | "income" | "expense">("all");
   const [category, setCategory] = useState("all");
+  const [sortKey, setSortKey] = useState<SortKey>("date");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
 
   useEffect(() => { api.getTransactions().then(setAll); }, []);
 
+  const handleSort = (key: SortKey) => {
+    if (key === sortKey) {
+      setSortDir(d => d === "asc" ? "desc" : "asc");
+    } else {
+      setSortKey(key);
+      setSortDir(key === "amount" ? "desc" : "asc");
+    }
+  };
+
   const categories = Array.from(new Set(all.map(t => t.category))).sort();
-  const filtered = all.filter(t =>
-    t.date.startsWith(month) &&
-    (type === "all" || t.type === type) &&
-    (category === "all" || t.category === category)
-  );
+  const filtered = all
+    .filter(t =>
+      t.date.startsWith(month) &&
+      (type === "all" || t.type === type) &&
+      (category === "all" || t.category === category)
+    )
+    .sort((a, b) => {
+      let cmp = 0;
+      if (sortKey === "date") cmp = a.date.localeCompare(b.date);
+      else if (sortKey === "merchant") cmp = a.merchant.localeCompare(b.merchant);
+      else if (sortKey === "amount") cmp = a.amount - b.amount;
+      return sortDir === "asc" ? cmp : -cmp;
+    });
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this transaction?")) return;
@@ -46,8 +68,18 @@ export default function TransactionList() {
             <table>
               <thead>
                 <tr>
-                  <th>Date</th><th>Merchant</th><th>Category</th>
-                  <th style={{ textAlign: "right" }}>Amount</th><th>Type</th><th>Source</th><th></th>
+                  {(["date", "merchant", "amount"] as SortKey[]).map(key => (
+                    <th
+                      key={key}
+                      onClick={() => handleSort(key)}
+                      style={{ cursor: "pointer", userSelect: "none", textAlign: key === "amount" ? "right" : "left" }}
+                    >
+                      {key.charAt(0).toUpperCase() + key.slice(1)}
+                      {sortKey === key ? (sortDir === "asc" ? " ↑" : " ↓") : " ↕"}
+                    </th>
+                  ))}
+                  <th>Category</th>
+                  <th>Type</th><th>Source</th><th></th>
                 </tr>
               </thead>
               <tbody>
