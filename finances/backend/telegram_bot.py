@@ -55,7 +55,7 @@ async def _handle_text(chat_id: int, text: str) -> None:
         bot = _get_bot()
         await bot.send_message(
             chat_id=chat_id,
-            text="Couldn't parse that. Try: 'spent $X at [place] on [category]'",
+            text="Couldn't extract an expense from that. Try something like: 'lunch at Itaim for 45 reais' or 'paid 120 for Uber'",
         )
         return
     await _save_and_reply(chat_id, parsed, "text")
