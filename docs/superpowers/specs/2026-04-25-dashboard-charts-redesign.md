@@ -134,7 +134,7 @@ class Transaction(TransactionCreate):
 **Frontend — delete:**
 - `finances/frontend/src/components/CsvImport.tsx`
 
-**Frontend — `App.tsx`:** remove the `/import` route (`<Route path="/import" element={<CsvImport />} />`) and the "Import CSV" `<NavLink>`.
+**Frontend — `App.tsx`:** remove the `/import` route (`<Route path="/import" element={<CsvImport />} />`), remove the "Import CSV" `<NavLink>`, reorder nav to `✦ Chat · Dashboard · Transactions · Add · Config`, and rename the "Categories" nav label to "Config". The `/categories` route itself is unchanged.
 
 ---
 
