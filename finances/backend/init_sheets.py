@@ -54,7 +54,7 @@ def init():
         body={"values": [[
             "Company", "Pay Period Begin", "Pay Period End", "Check Date",
             "Gross Pay", "Pre Tax Deductions", "Employee Taxes", "Post Tax Deductions",
-            "Net Pay", "401k Salary", "401k Employer Match", "Life@ Choice",
+            "Net Pay", "Employee 401k", "Employer 401k Match", "Life@ Choice",
         ]]},
     ).execute()
     print("Sheets initialised (Transactions, Categories, Logs, Payslips).")

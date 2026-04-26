@@ -97,6 +97,7 @@ def _is_credit_card_bill(file_bytes: bytes) -> bool:
 
 
 def _is_payslip(file_bytes: bytes) -> bool:
+    """Detect if PDF is a payslip by matching 3+ of the known field markers."""
     try:
         import pdfplumber
         import io
