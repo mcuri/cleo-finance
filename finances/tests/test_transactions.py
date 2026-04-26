@@ -57,3 +57,31 @@ def test_delete_transaction_not_found(client, mock_sheets):
     mock_sheets.delete_transaction.return_value = False
     resp = client.delete("/api/transactions/notexist")
     assert resp.status_code == 404
+
+def test_update_transaction_applies_amount_and_merchant(client, mock_sheets):
+    from backend.models import Transaction
+    existing = Transaction(
+        id="abc123",
+        date=date(2026, 4, 20),
+        amount=10.0,
+        merchant="Old Name",
+        category="Groceries",
+        type="expense",
+        source="web",
+    )
+    mock_sheets.get_all_transactions.return_value = [existing]
+    mock_sheets.update_transaction.return_value = True
+    resp = client.put("/api/transactions/abc123", json={
+        "merchant": "New Name",
+        "amount": 25.0,
+    })
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["merchant"] == "New Name"
+    assert data["amount"] == 25.0
+    assert data["category"] == "Groceries"  # unchanged
+
+def test_update_transaction_not_found(client, mock_sheets):
+    mock_sheets.get_all_transactions.return_value = []
+    resp = client.put("/api/transactions/notexist", json={"merchant": "X"})
+    assert resp.status_code == 404
