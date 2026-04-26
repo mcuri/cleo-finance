@@ -278,8 +278,9 @@ async def chat(
         elif skipped_count:
             result = f"[BACKEND RESULT] All {skipped_count} expense(s) were duplicates — already in your history."
         else:
-            result = "[BACKEND RESULT] 0 expenses saved — message format not recognized by the expense parser."
-    system += f"\n\n{result}"
+            result = ""
+    if result:
+        system += f"\n\n{result}"
     profile = load_user_profile()
     if profile:
         system += f"\n\nUser financial profile (behavioral patterns observed over time):\n{profile}"

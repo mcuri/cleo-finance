@@ -75,7 +75,20 @@ def _build_result(saved: List[Transaction], skipped: int) -> str:
         return result
     if skipped:
         return f"[BACKEND RESULT] All {skipped} expense(s) were duplicates — already in your history."
-    return "[BACKEND RESULT] 0 expenses saved — message format not recognized by the expense parser."
+    return ""
+
+
+_QUESTION_STARTERS = (
+    "how ", "what ", "when ", "where ", "why ", "who ",
+    "can you", "could you", "show me", "tell me", "give me",
+    "did i", "do i", "does my", "is my", "are my",
+    "was my", "were my", "how much", "how many",
+)
+
+
+def _is_question(text: str) -> bool:
+    t = text.lower().strip()
+    return t.endswith("?") or any(t.startswith(s) for s in _QUESTION_STARTERS)
 
 
 def _build_system(sheets: SheetsClient, result: str) -> str:
@@ -106,7 +119,10 @@ def _call_claude(system: str, user_text: str) -> str:
 
 async def _handle_text(chat_id: int, text: str) -> None:
     sheets = SheetsClient(spreadsheet_id=get_settings().google_sheets_id)
-    saved, skipped = _save_expenses(parse_expense_text(text), sheets)
+    if _is_question(text):
+        saved, skipped = [], 0
+    else:
+        saved, skipped = _save_expenses(parse_expense_text(text), sheets)
     result = _build_result(saved, skipped)
     system = _build_system(sheets, result)
     reply = _call_claude(system, text)
