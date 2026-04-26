@@ -10,7 +10,7 @@ from google.oauth2.service_account import Credentials
 
 logger = logging.getLogger(__name__)
 
-SCOPES = ["https://www.googleapis.com/auth/drive.file"]
+SCOPES = ["https://www.googleapis.com/auth/drive"]
 _SERVICE_ACCOUNT_FILE = os.path.join(os.path.dirname(__file__), "service-account.json")
 _ROOT_FOLDER_NAME = "cleo-finance"
 
