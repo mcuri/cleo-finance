@@ -16,6 +16,22 @@ const CATEGORY_COLORS = [
 ];
 
 
+function ExpensesTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: MonthlySavingsPoint }> }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#e2e8f0" }}>
+      <div style={{ fontWeight: 600, marginBottom: 4 }}>{d.label}</div>
+      <div>Expenses: <span style={{ color: "#f87171" }}>${d.expenses.toFixed(2)}</span></div>
+      {d.income > 0 && (
+        <div style={{ color: "#64748b", marginTop: 4 }}>
+          {Math.round(d.expenses / d.income * 100)}% of income
+        </div>
+      )}
+    </div>
+  );
+}
+
 function SavingsTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: MonthlySavingsPoint }> }) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload;
@@ -198,6 +214,25 @@ export default function Dashboard() {
             ))}
           </div>
         )}
+      </div>
+
+      <h2>Monthly Expenses</h2>
+      <div className="card">
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={monthlySavingsData} margin={{ left: 10, top: 20 }}>
+            <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
+            <Tooltip content={<ExpensesTooltip />} />
+            <Bar dataKey="expenses" fill="#f87171" radius={[4, 4, 0, 0]}>
+              <LabelList
+                dataKey="expenses"
+                position="top"
+                formatter={(v: number) => v === 0 ? '' : `$${v.toFixed(0)}`}
+                style={{ fontSize: 10, fill: "#94a3b8" }}
+              />
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
       <h2>Monthly Savings</h2>
