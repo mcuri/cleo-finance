@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip,
   ResponsiveContainer, Cell, ReferenceLine, LabelList,
@@ -81,6 +81,17 @@ export default function Dashboard() {
     return buildMonthlySavingsData(transactions, earliest, toYMD(_NOW));
   }, [transactions]);
 
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+  const [popoverTop, setPopoverTop] = useState(0);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  const hoveredTransactions = useMemo(() => {
+    if (!hoveredCategory) return [];
+    return filteredTransactions
+      .filter(t => t.type === "expense" && t.category === hoveredCategory)
+      .sort((a, b) => b.date.localeCompare(a.date));
+  }, [hoveredCategory, filteredTransactions]);
+
   return (
     <div style={{ maxWidth: 860, margin: "0 auto" }}>
       <h1>Dashboard</h1>
@@ -133,7 +144,16 @@ export default function Dashboard() {
             {categoryData.map(({ category, amount }, i) => {
               const pct = Math.round(amount / totalExpenses * 100);
               return (
-                <div key={category} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <div
+                  key={category}
+                  style={{ display: "flex", alignItems: "center", gap: "0.75rem", cursor: "default" }}
+                  onMouseEnter={e => {
+                    setHoveredCategory(category);
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    setPopoverTop(rect.top);
+                  }}
+                  onMouseLeave={() => setHoveredCategory(null)}
+                >
                   <div style={{ width: 110, textAlign: "right", fontSize: "0.8rem", color: "var(--text-secondary)", flexShrink: 0 }}>
                     {category}
                   </div>
@@ -149,6 +169,38 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      {hoveredCategory && hoveredTransactions.length > 0 && (
+        <div
+          ref={popoverRef}
+          style={{
+            position: "fixed",
+            top: Math.max(8, Math.min(popoverTop - 8, window.innerHeight - 280)),
+            right: 16,
+            zIndex: 1000,
+            background: "var(--surface)",
+            border: "1px solid var(--border)",
+            borderRadius: 8,
+            padding: "0.75rem",
+            minWidth: 230,
+            maxHeight: 260,
+            overflowY: "auto",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
+            pointerEvents: "none",
+          }}
+        >
+          <div style={{ fontWeight: 600, fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--text)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            {hoveredCategory}
+          </div>
+          {hoveredTransactions.map(t => (
+            <div key={t.id} style={{ display: "flex", gap: "0.5rem", fontSize: "0.8rem", padding: "0.25rem 0", borderBottom: "1px solid var(--bg)" }}>
+              <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>{t.date.slice(5)}</span>
+              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-secondary)" }}>{t.merchant}</span>
+              <span style={{ color: "#f87171", fontWeight: 500, flexShrink: 0 }}>${t.amount.toFixed(2)}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       <h2>Monthly Savings</h2>
       <div className="card">
