@@ -266,7 +266,7 @@ async def chat(
     ])
 
     # 3. Build system prompt
-    system = _SYSTEM + f"\n\nTransaction data: {tx_json}"
+    system = _SYSTEM + f"\n\nToday's date: {date_type.today().isoformat()}\n\nTransaction data: {tx_json}"
     if result is None:
         if saved:
             summary = ", ".join(

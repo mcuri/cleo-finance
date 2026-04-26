@@ -98,7 +98,9 @@ def _build_system(sheets: SheetsClient, result: str) -> str:
          "category": t.category, "type": t.type}
         for t in transactions
     ])
-    system = _SYSTEM + f"\n\nTransaction data: {tx_json}\n\n{result}"
+    system = _SYSTEM + f"\n\nToday's date: {date_type.today().isoformat()}\n\nTransaction data: {tx_json}"
+    if result:
+        system += f"\n\n{result}"
     profile = load_user_profile()
     if profile:
         system += f"\n\nUser financial profile (behavioral patterns observed over time):\n{profile}"
