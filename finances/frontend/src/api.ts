@@ -27,6 +27,8 @@ export const api = {
     req<Transaction>("/api/transactions", { method: "POST", body: JSON.stringify(data) }),
   deleteTransaction: (id: string) =>
     req<void>(`/api/transactions/${id}`, { method: "DELETE" }),
+  updateTransaction: (id: string, data: Partial<TransactionCreate>) =>
+    req<Transaction>(`/api/transactions/${id}`, { method: "PUT", body: JSON.stringify(data) }),
 
   getCategories: () => req<Category[]>("/api/categories"),
   createCategory: (name: string) =>
