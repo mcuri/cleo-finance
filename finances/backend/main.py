@@ -1,6 +1,7 @@
 import io
 import os
 import logging
+from logging.handlers import RotatingFileHandler
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -15,7 +16,20 @@ from backend.csv_import import parse_csv, csv_rows_to_creates, CsvParseError
 from backend.models import Transaction
 from backend.sheets import SheetsClient
 
-logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s %(message)s")
+# Set up file logging for the app
+logs_dir = os.path.join(os.path.dirname(__file__), "..", "logs")
+os.makedirs(logs_dir, exist_ok=True)
+log_file = os.path.join(logs_dir, "app.log")
+
+console_handler = logging.StreamHandler()
+console_handler.setFormatter(logging.Formatter("%(levelname)s %(name)s %(message)s"))
+file_handler = RotatingFileHandler(log_file, maxBytes=5_000_000, backupCount=3)
+file_handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s"))
+
+logging.basicConfig(
+    level=logging.INFO,
+    handlers=[console_handler, file_handler],
+)
 
 app = FastAPI(title="Finance Tracker")
 

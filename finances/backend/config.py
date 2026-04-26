@@ -15,7 +15,7 @@ class Settings(BaseSettings):
     frontend_url: str = "http://localhost:5173"
     google_service_account_json: str = ""
 
-    model_config = {"env_file": ".env"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
 
 @lru_cache

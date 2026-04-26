@@ -9,10 +9,10 @@
 
 When the user uploads a payslip PDF through the chat, the system:
 1. Detects it as a payslip (not a credit card bill or generic PDF)
-2. Extracts 12 summary fields using Claude
-3. Writes a detailed row to a new **Payslips** Google Sheet tab
-4. Writes the net pay as an income transaction to the **Transactions** tab
-5. Cleo confirms both saves in the chat response
+2. Extracts 12 summary fields per payslip using Claude (a single PDF may contain multiple payslips)
+3. Writes one detailed row per payslip to a new **Payslips** Google Sheet tab
+4. Writes one net pay income transaction per payslip to the **Transactions** tab
+5. Cleo confirms all saves in the chat response
 
 Payslips are always PDFs. Image payslips are out of scope.
 
@@ -78,22 +78,22 @@ Unchanged. The net pay is appended as a standard income row:
 Single public function:
 
 ```python
-def parse_payslip(pdf_bytes: bytes) -> Optional[ParsedPayslip]
+def parse_payslip(pdf_bytes: bytes) -> List[ParsedPayslip]
 ```
 
 **Implementation:**
 - Encodes PDF as base64
 - Sends to `claude-haiku-4-5-20251001` as a `document` content block (same pattern as `parse_pdf_statement` in `claude_parser.py`)
-- Prompt asks for exactly 12 fields as a JSON object matching the `ParsedPayslip` schema
-- Returns `None` on malformed or missing JSON
+- Prompt asks for a JSON **array** where each element has the 12 fields — handles single and multi-payslip PDFs uniformly
+- Returns empty list on malformed or missing JSON
 - Calls `log_usage(response, "parse_payslip")`
 
 **Prompt schema hint:**
 ```
-{"company": "...", "pay_period_begin": "YYYY-MM-DD", "pay_period_end": "YYYY-MM-DD",
- "check_date": "YYYY-MM-DD", "gross_pay": 0.00, "pre_tax_deductions": 0.00,
- "employee_taxes": 0.00, "post_tax_deductions": 0.00, "net_pay": 0.00,
- "employee_401k": 0.00, "employer_401k_match": 0.00, "life_choice": 0.00}
+[{"company": "...", "pay_period_begin": "YYYY-MM-DD", "pay_period_end": "YYYY-MM-DD",
+  "check_date": "YYYY-MM-DD", "gross_pay": 0.00, "pre_tax_deductions": 0.00,
+  "employee_taxes": 0.00, "post_tax_deductions": 0.00, "net_pay": 0.00,
+  "employee_401k": 0.00, "employer_401k_match": 0.00, "life_choice": 0.00}, ...]
 ```
 
 ---
