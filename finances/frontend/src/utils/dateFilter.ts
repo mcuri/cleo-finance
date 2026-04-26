@@ -88,3 +88,33 @@ export function buildTrendData(
   }
   return points;
 }
+
+export interface MonthlySavingsPoint {
+  label: string;
+  net: number;
+  rate: number;
+  income: number;
+  expenses: number;
+}
+
+export function buildMonthlySavingsData(
+  transactions: Array<{ date: string; amount: number; type: string }>,
+  from: string,
+  to: string,
+): MonthlySavingsPoint[] {
+  const fromDate = new Date(from + 'T00:00:00');
+  const toMonth = to.slice(0, 7);
+  const points: MonthlySavingsPoint[] = [];
+  const d = new Date(fromDate.getFullYear(), fromDate.getMonth(), 1);
+  while (toYMD(d).slice(0, 7) <= toMonth) {
+    const label = toYMD(d).slice(0, 7);
+    const month = transactions.filter(t => t.date.startsWith(label));
+    const income   = +month.filter(t => t.type === 'income' ).reduce((s, t) => s + t.amount, 0).toFixed(2);
+    const expenses = +month.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0).toFixed(2);
+    const net  = +(income - expenses).toFixed(2);
+    const rate = income > 0 ? +(net / income * 100).toFixed(1) : 0;
+    points.push({ label, net, rate, income, expenses });
+    d.setMonth(d.getMonth() + 1);
+  }
+  return points;
+}
