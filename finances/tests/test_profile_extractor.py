@@ -88,3 +88,40 @@ def test_write_profile_and_log_on_empty_file(tmp_path):
     assert "- First pattern" in content
     assert "## Observations Log" in content
     assert "First log entry" in content
+
+
+@pytest.mark.asyncio
+async def test_extract_and_update_profile_writes_on_update(tmp_path):
+    from backend.profile_extractor import extract_and_update_profile
+    f = tmp_path / "notes.md"
+    f.write_text("# Notes\n")
+    mock_result = {
+        "update": True,
+        "profile": "- Tracks expenses regularly",
+        "log_entry": "Mentioned dining budget",
+    }
+    with patch("backend.profile_extractor._call_claude_extract", return_value=mock_result):
+        await extract_and_update_profile("I spent $20 on lunch", "Saved! $20 at Chipotle.", f)
+    content = f.read_text()
+    assert "Tracks expenses regularly" in content
+    assert "Mentioned dining budget" in content
+
+
+@pytest.mark.asyncio
+async def test_extract_and_update_profile_no_write_on_no_update(tmp_path):
+    from backend.profile_extractor import extract_and_update_profile
+    f = tmp_path / "notes.md"
+    f.write_text("# Notes\n")
+    with patch("backend.profile_extractor._call_claude_extract", return_value={"update": False}):
+        await extract_and_update_profile("hello", "Hi there!", f)
+    content = f.read_text()
+    assert "## Current Profile" not in content
+
+
+@pytest.mark.asyncio
+async def test_extract_and_update_profile_swallows_exceptions(tmp_path):
+    from backend.profile_extractor import extract_and_update_profile
+    f = tmp_path / "notes.md"
+    f.write_text("# Notes\n")
+    with patch("backend.profile_extractor._call_claude_extract", side_effect=Exception("API down")):
+        await extract_and_update_profile("hello", "Hi!", f)  # must not raise
