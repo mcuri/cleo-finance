@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from "react";
+import { Fragment, useEffect, useState, useMemo } from "react";
 import { api } from "../api";
 import type { Category, Transaction } from "../types";
 
@@ -15,8 +15,11 @@ type EditForm = {
 };
 
 export default function TransactionList() {
+  const _now = new Date();
+  const _currentMonth = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}`;
+
   const [all, setAll] = useState<Transaction[]>([]);
-  const [month, setMonth] = useState(() => new Date().toISOString().slice(0, 7));
+  const [month, setMonth] = useState(_currentMonth);
   const [type, setType] = useState<"all" | "income" | "expense">("all");
   const [category, setCategory] = useState("all");
   const [sortKey, setSortKey] = useState<SortKey>("date");
@@ -95,6 +98,19 @@ export default function TransactionList() {
   const set = (key: keyof EditForm) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
     setEditForm(f => ({ ...f, [key]: e.target.value }));
 
+  const isCurrentMonth = month === _currentMonth;
+
+  const shiftMonth = (delta: number) => {
+    const [y, m] = month.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  const monthLabel = useMemo(() => {
+    const [y, m] = month.split('-').map(Number);
+    return new Date(y, m - 1).toLocaleString('default', { month: 'long', year: 'numeric' });
+  }, [month]);
+
   const categories_all = Array.from(new Set(all.map(t => t.category))).sort();
   const filtered = all
     .filter(t =>
@@ -115,8 +131,13 @@ export default function TransactionList() {
   return (
     <div style={{ maxWidth: 920, margin: "0 auto" }}>
       <h1>Transactions</h1>
-      <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
-        <input type="month" value={month} onChange={e => setMonth(e.target.value)} style={{ width: "auto" }} />
+      <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem", alignItems: "center" }}>
+        <button onClick={() => shiftMonth(-1)} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', fontSize: '1rem', color: 'var(--text-secondary)' }}>‹</button>
+        <span style={{ minWidth: 140, textAlign: 'center', fontWeight: 600, fontSize: '0.95rem' }}>{monthLabel}</span>
+        <button onClick={() => shiftMonth(1)} disabled={isCurrentMonth} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: isCurrentMonth ? 'default' : 'pointer', fontSize: '1rem', color: isCurrentMonth ? 'var(--text-muted)' : 'var(--text-secondary)', opacity: isCurrentMonth ? 0.4 : 1 }}>›</button>
+        {!isCurrentMonth && (
+          <button onClick={() => setMonth(_currentMonth)} style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.8rem', cursor: 'pointer', border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 600 }}>This Month</button>
+        )}
         <select value={type} onChange={e => setType(e.target.value as typeof type)} style={{ width: "auto" }}>
           <option value="all">All types</option>
           <option value="income">Income</option>

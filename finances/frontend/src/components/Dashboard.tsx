@@ -5,32 +5,16 @@ import {
 } from "recharts";
 import { api } from "../api";
 import type { Transaction } from "../types";
-import { presetToRange, buildMonthlySavingsData } from "../utils/dateFilter";
-import type { DateFilter, Preset, MonthlySavingsPoint } from "../utils/dateFilter";
+import { monthToRange, buildMonthlySavingsData, toYMD } from "../utils/dateFilter";
+import type { MonthlySavingsPoint } from "../utils/dateFilter";
 
-const PRESETS: { key: Exclude<Preset, 'custom'>; label: string }[] = [
-  { key: 'this_week',  label: 'This Week'  },
-  { key: 'this_month', label: 'This Month' },
-  { key: 'last_month', label: 'Last Month' },
-  { key: '3_months',   label: '3 Months'   },
-  { key: '6_months',   label: '6 Months'   },
-];
+const _NOW = new Date();
 
 const CATEGORY_COLORS = [
   '#6366f1', '#34d399', '#f59e0b', '#f87171',
   '#818cf8', '#a3e635', '#fb923c', '#94a3b8',
 ];
 
-function filterTitle(filter: DateFilter): string {
-  if (filter.preset === 'this_week') return 'This Week';
-  if (filter.preset === 'this_month' || filter.preset === 'last_month') {
-    const d = new Date(filter.from + 'T00:00:00');
-    return d.toLocaleString('default', { month: 'long', year: 'numeric' });
-  }
-  if (filter.preset === '3_months') return 'Last 3 Months';
-  if (filter.preset === '6_months') return 'Last 6 Months';
-  return `${filter.from} – ${filter.to}`;
-}
 
 function SavingsTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: MonthlySavingsPoint }> }) {
   if (!active || !payload?.length) return null;
@@ -49,19 +33,31 @@ function SavingsTooltip({ active, payload }: { active?: boolean; payload?: Array
 
 export default function Dashboard() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [dateFilter, setDateFilter] = useState<DateFilter>(() => {
-    const range = presetToRange('this_month');
-    return { preset: 'this_month', ...range };
-  });
-  const [customFrom, setCustomFrom] = useState('');
-  const [customTo,   setCustomTo]   = useState('');
-  const [showCustom, setShowCustom] = useState(false);
+  const [viewYear,  setViewYear]  = useState(_NOW.getFullYear());
+  const [viewMonth, setViewMonth] = useState(_NOW.getMonth());
 
   useEffect(() => { api.getTransactions().then(setTransactions); }, []);
 
+  const { from, to } = useMemo(() => monthToRange(viewYear, viewMonth), [viewYear, viewMonth]);
+
+  const isCurrentMonth = viewYear === _NOW.getFullYear() && viewMonth === _NOW.getMonth();
+
+  const prevMonth = () => {
+    if (viewMonth === 0) { setViewYear(y => y - 1); setViewMonth(11); }
+    else setViewMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (isCurrentMonth) return;
+    if (viewMonth === 11) { setViewYear(y => y + 1); setViewMonth(0); }
+    else setViewMonth(m => m + 1);
+  };
+  const goToToday = () => { setViewYear(_NOW.getFullYear()); setViewMonth(_NOW.getMonth()); };
+
+  const monthLabel = new Date(viewYear, viewMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
+
   const filteredTransactions = useMemo(
-    () => transactions.filter(t => t.date >= dateFilter.from && t.date <= dateFilter.to),
-    [transactions, dateFilter],
+    () => transactions.filter(t => t.date >= from && t.date <= to),
+    [transactions, from, to],
   );
 
   const totalIncome   = filteredTransactions.filter(t => t.type === "income" ).reduce((s, t) => s + t.amount, 0);
@@ -79,63 +75,24 @@ export default function Dashboard() {
       .sort((a, b) => b.amount - a.amount);
   }, [filteredTransactions]);
 
-  const monthlySavingsData = useMemo(
-    () => buildMonthlySavingsData(transactions, dateFilter.from, dateFilter.to),
-    [transactions, dateFilter],
-  );
-
-  const selectPreset = (key: Exclude<Preset, 'custom'>) => {
-    setDateFilter({ preset: key, ...presetToRange(key) });
-    setShowCustom(false);
-  };
-
-  const _now = new Date();
-  const today = `${_now.getFullYear()}-${String(_now.getMonth() + 1).padStart(2, '0')}-${String(_now.getDate()).padStart(2, '0')}`;
-  const applyCustom = () => {
-    if (!customFrom || !customTo || customFrom > customTo) return;
-    setDateFilter({ preset: 'custom', from: customFrom, to: customTo > today ? today : customTo });
-    setShowCustom(false);
-  };
-
-  const pill = (active: boolean): React.CSSProperties => ({
-    padding: '0.25rem 0.75rem',
-    borderRadius: '999px',
-    fontSize: '0.8rem',
-    cursor: 'pointer',
-    border: active ? 'none' : '1px solid var(--border)',
-    background: active ? 'var(--accent)' : 'var(--surface)',
-    color: active ? '#fff' : 'var(--text-secondary)',
-    fontWeight: active ? 600 : 400,
-  });
+  const monthlySavingsData = useMemo(() => {
+    if (!transactions.length) return [];
+    const earliest = [...transactions].map(t => t.date).sort()[0];
+    return buildMonthlySavingsData(transactions, earliest, toYMD(_NOW));
+  }, [transactions]);
 
   return (
     <div style={{ maxWidth: 860, margin: "0 auto" }}>
-      <h1>Dashboard — {filterTitle(dateFilter)}</h1>
+      <h1>Dashboard</h1>
 
-      <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', alignItems: 'center' }}>
-        {PRESETS.map(p => (
-          <button key={p.key} style={pill(dateFilter.preset === p.key)} onClick={() => selectPreset(p.key)}>
-            {p.label}
-          </button>
-        ))}
-        <button style={pill(dateFilter.preset === 'custom')} onClick={() => setShowCustom(v => !v)}>
-          Custom…
-        </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.25rem' }}>
+        <button onClick={prevMonth} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: 'pointer', fontSize: '1rem', color: 'var(--text-secondary)' }}>‹</button>
+        <span style={{ minWidth: 140, textAlign: 'center', fontWeight: 600, fontSize: '0.95rem' }}>{monthLabel}</span>
+        <button onClick={nextMonth} disabled={isCurrentMonth} style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.25rem 0.6rem', cursor: isCurrentMonth ? 'default' : 'pointer', fontSize: '1rem', color: isCurrentMonth ? 'var(--text-muted)' : 'var(--text-secondary)', opacity: isCurrentMonth ? 0.4 : 1 }}>›</button>
+        {!isCurrentMonth && (
+          <button onClick={goToToday} style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.8rem', cursor: 'pointer', border: 'none', background: 'var(--accent)', color: '#fff', fontWeight: 600 }}>This Month</button>
+        )}
       </div>
-
-      {showCustom && (
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>From</span>
-          <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} style={{ width: 'auto', marginTop: 0 }} />
-          <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>To</span>
-          <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} style={{ width: 'auto', marginTop: 0 }} />
-          <button className="primary" onClick={applyCustom}
-            disabled={!customFrom || !customTo || customFrom > customTo}
-            style={{ width: 'auto' }}>
-            Apply
-          </button>
-        </div>
-      )}
 
       <div className="summary-cards">
         <div className="card">
