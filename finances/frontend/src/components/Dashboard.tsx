@@ -82,8 +82,8 @@ export default function Dashboard() {
   }, [transactions]);
 
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
-  const [popoverTop, setPopoverTop] = useState(0);
-  const popoverRef = useRef<HTMLDivElement>(null);
+  const [popoverRelTop, setPopoverRelTop] = useState(0);
+  const categoryCardRef = useRef<HTMLDivElement>(null);
 
   const hoveredTransactions = useMemo(() => {
     if (!hoveredCategory) return [];
@@ -136,7 +136,7 @@ export default function Dashboard() {
       </div>
 
       <h2>Spending by category</h2>
-      <div className="card" style={{ marginBottom: "1.5rem" }}>
+      <div ref={categoryCardRef} className="card" style={{ marginBottom: "1.5rem", position: "relative" }}>
         {categoryData.length === 0 ? (
           <p style={{ color: "var(--text-muted)", margin: 0 }}>No expenses this period.</p>
         ) : (
@@ -149,8 +149,9 @@ export default function Dashboard() {
                   style={{ display: "flex", alignItems: "center", gap: "0.75rem", cursor: "default" }}
                   onMouseEnter={e => {
                     setHoveredCategory(category);
-                    const rect = e.currentTarget.getBoundingClientRect();
-                    setPopoverTop(rect.top);
+                    const rowRect = e.currentTarget.getBoundingClientRect();
+                    const cardRect = categoryCardRef.current?.getBoundingClientRect();
+                    setPopoverRelTop(cardRect ? rowRect.top - cardRect.top - 8 : 0);
                   }}
                   onMouseLeave={() => setHoveredCategory(null)}
                 >
@@ -168,16 +169,13 @@ export default function Dashboard() {
             })}
           </div>
         )}
-      </div>
 
-      {hoveredCategory && hoveredTransactions.length > 0 && (
-        <div
-          ref={popoverRef}
-          style={{
-            position: "fixed",
-            top: Math.max(8, Math.min(popoverTop - 8, window.innerHeight - 280)),
-            right: 16,
-            zIndex: 1000,
+        {hoveredCategory && hoveredTransactions.length > 0 && (
+          <div style={{
+            position: "absolute",
+            top: Math.max(0, popoverRelTop),
+            right: 0,
+            zIndex: 10,
             background: "var(--surface)",
             border: "1px solid var(--border)",
             borderRadius: 8,
@@ -187,20 +185,20 @@ export default function Dashboard() {
             overflowY: "auto",
             boxShadow: "0 8px 24px rgba(0,0,0,0.25)",
             pointerEvents: "none",
-          }}
-        >
-          <div style={{ fontWeight: 600, fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--text)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-            {hoveredCategory}
-          </div>
-          {hoveredTransactions.map(t => (
-            <div key={t.id} style={{ display: "flex", gap: "0.5rem", fontSize: "0.8rem", padding: "0.25rem 0", borderBottom: "1px solid var(--bg)" }}>
-              <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>{t.date.slice(5)}</span>
-              <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-secondary)" }}>{t.merchant}</span>
-              <span style={{ color: "#f87171", fontWeight: 500, flexShrink: 0 }}>${t.amount.toFixed(2)}</span>
+          }}>
+            <div style={{ fontWeight: 600, fontSize: "0.8rem", marginBottom: "0.5rem", color: "var(--text)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              {hoveredCategory}
             </div>
-          ))}
-        </div>
-      )}
+            {hoveredTransactions.map(t => (
+              <div key={t.id} style={{ display: "flex", gap: "0.5rem", fontSize: "0.8rem", padding: "0.25rem 0", borderBottom: "1px solid var(--bg)" }}>
+                <span style={{ color: "var(--text-muted)", flexShrink: 0 }}>{t.date.slice(5)}</span>
+                <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-secondary)" }}>{t.merchant}</span>
+                <span style={{ color: "#f87171", fontWeight: 500, flexShrink: 0 }}>${t.amount.toFixed(2)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <h2>Monthly Savings</h2>
       <div className="card">
