@@ -20,6 +20,7 @@ export default function Chat() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const sentBlobUrls = useRef<string[]>([]);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
     const serializable = messages.map(m =>
@@ -28,7 +29,8 @@ export default function Chat() {
         : m
     );
     localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    bottomRef.current?.scrollIntoView({ behavior: isInitialMount.current ? "instant" : "smooth" });
+    isInitialMount.current = false;
   }, [messages]);
 
   const previewUrl = useMemo(() => {

@@ -58,6 +58,14 @@ class SheetsClient:
             body={"values": [row]},
         ).execute()
 
+    def find_duplicate_payslip(self, company: str, check_date: date_type) -> bool:
+        result = self._values().get(
+            spreadsheetId=self.spreadsheet_id,
+            range="Payslips!A:D",
+        ).execute()
+        rows = result.get("values", [])[1:]  # skip header
+        return any(len(r) >= 4 and r[0] == company and r[3] == check_date.isoformat() for r in rows)
+
     def append_payslip(self, p: ParsedPayslip) -> None:
         row = [
             p.company,

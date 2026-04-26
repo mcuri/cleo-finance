@@ -10,6 +10,7 @@ def mock_sheets():
     m = MagicMock()
     m.get_all_transactions.return_value = []
     m.find_duplicate.return_value = False
+    m.find_duplicate_payslip.return_value = False
     return m
 
 

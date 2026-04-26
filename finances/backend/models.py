@@ -18,8 +18,8 @@ class TransactionCreate(BaseModel):
     @field_validator("amount")
     @classmethod
     def amount_positive(cls, v: float) -> float:
-        if v <= 0:
-            raise ValueError("amount must be positive")
+        if v < 0:
+            raise ValueError("amount must be non-negative")
         return v
 
 

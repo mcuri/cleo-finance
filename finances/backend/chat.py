@@ -210,6 +210,9 @@ async def chat(
                     )
                 payslip_summaries = []
                 for p in parsed_payslips:
+                    if sheets.find_duplicate_payslip(p.company, p.check_date):
+                        skipped_count += 1
+                        continue
                     sheets.append_payslip(p)
                     income_tx = Transaction.from_create(
                         TransactionCreate(
