@@ -20,6 +20,7 @@ from backend.credit_card_parser import (
 )
 from backend.models import ParsedExpense, Transaction, TransactionCreate
 from backend.payslip_parser import parse_payslip
+from backend.drive import DriveClient
 from backend.sheets import SheetsClient
 
 logger = logging.getLogger(__name__)
@@ -189,6 +190,15 @@ async def chat(
                         status_code=400,
                         detail=f"Failed to parse credit card statement: {str(e)}",
                     )
+                try:
+                    DriveClient().upload_pdf(
+                        file_bytes,
+                        file.filename or "cc_bill.pdf",
+                        "Credit Card Bills",
+                        date_type.today().strftime("%Y-%m"),
+                    )
+                except Exception as e:
+                    logger.warning(f"Drive upload failed for CC bill: {e}")
             elif _is_payslip(file_bytes):
                 parsed_payslips = parse_payslip(file_bytes)
                 if not parsed_payslips:
@@ -221,6 +231,15 @@ async def chat(
                     + "; ".join(payslip_summaries)
                     + "."
                 )
+                try:
+                    DriveClient().upload_pdf(
+                        file_bytes,
+                        file.filename or "payslip.pdf",
+                        "Payslips",
+                        parsed_payslips[0].check_date.strftime("%Y-%m"),
+                    )
+                except Exception as e:
+                    logger.warning(f"Drive upload failed for payslip: {e}")
             else:
                 # Generic PDF statement parser
                 saved, skipped_count = _save_expenses(

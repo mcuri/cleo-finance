@@ -172,3 +172,69 @@ def test_chat_payslip_pdf_saves_payslip_and_transaction(client, mock_sheets):
     assert saved_tx.amount == 4801.87
     assert saved_tx.type == "income"
     assert saved_tx.source == "payslip"
+
+
+def test_chat_payslip_pdf_uploads_to_drive(client, mock_sheets):
+    from backend.models import ParsedPayslip
+    parsed = ParsedPayslip(
+        company="Meta Platforms, Inc.",
+        pay_period_begin=date(2026, 4, 6),
+        pay_period_end=date(2026, 4, 19),
+        check_date=date(2026, 4, 24),
+        gross_pay=8628.24,
+        pre_tax_deductions=1067.69,
+        employee_taxes=2758.68,
+        post_tax_deductions=0.00,
+        net_pay=4801.87,
+        employee_401k=1035.39,
+        employer_401k_match=1035.39,
+        life_choice=1129.17,
+    )
+    with patch("backend.chat._is_credit_card_bill", return_value=False), \
+         patch("backend.chat._is_payslip", return_value=True), \
+         patch("backend.chat.parse_payslip", return_value=[parsed]), \
+         patch("backend.chat.DriveClient") as mock_drive_cls, \
+         patch("backend.chat.anthropic.Anthropic") as mock_cls, \
+         patch("backend.chat.log_usage"):
+        _mock_claude(mock_cls, "Payslip saved!")
+        resp = client.post(
+            "/api/chat",
+            data={"message": "here is my payslip", "history": "[]"},
+            files={"file": ("Meta_payslip.pdf", b"%PDF-1.4", "application/pdf")},
+        )
+    assert resp.status_code == 200
+    mock_drive_cls.return_value.upload_pdf.assert_called_once_with(
+        b"%PDF-1.4", "Meta_payslip.pdf", "Payslips", "2026-04"
+    )
+
+
+def test_chat_drive_failure_does_not_affect_response(client, mock_sheets):
+    from backend.models import ParsedPayslip
+    parsed = ParsedPayslip(
+        company="Meta Platforms, Inc.",
+        pay_period_begin=date(2026, 4, 6),
+        pay_period_end=date(2026, 4, 19),
+        check_date=date(2026, 4, 24),
+        gross_pay=8628.24,
+        pre_tax_deductions=1067.69,
+        employee_taxes=2758.68,
+        post_tax_deductions=0.00,
+        net_pay=4801.87,
+        employee_401k=1035.39,
+        employer_401k_match=1035.39,
+        life_choice=1129.17,
+    )
+    with patch("backend.chat._is_credit_card_bill", return_value=False), \
+         patch("backend.chat._is_payslip", return_value=True), \
+         patch("backend.chat.parse_payslip", return_value=[parsed]), \
+         patch("backend.chat.DriveClient") as mock_drive_cls, \
+         patch("backend.chat.anthropic.Anthropic") as mock_cls, \
+         patch("backend.chat.log_usage"):
+        mock_drive_cls.return_value.upload_pdf.side_effect = Exception("Drive unavailable")
+        _mock_claude(mock_cls, "Payslip saved!")
+        resp = client.post(
+            "/api/chat",
+            data={"message": "here is my payslip", "history": "[]"},
+            files={"file": ("payslip.pdf", b"%PDF-1.4", "application/pdf")},
+        )
+    assert resp.status_code == 200
