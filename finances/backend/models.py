@@ -4,7 +4,7 @@ from typing import Literal, Optional
 import uuid
 
 TransactionType = Literal["income", "expense"]
-TransactionSource = Literal["web", "csv", "telegram", "credit_card"]
+TransactionSource = Literal["web", "csv", "telegram", "credit_card", "payslip"]
 
 
 class TransactionCreate(BaseModel):
@@ -58,3 +58,18 @@ class ParsedExpense(BaseModel):
     date: Optional[date_type] = None
     notes: Optional[str] = None
     confidence: float = 1.0
+
+
+class ParsedPayslip(BaseModel):
+    company: str
+    pay_period_begin: date_type
+    pay_period_end: date_type
+    check_date: date_type
+    gross_pay: float
+    pre_tax_deductions: float
+    employee_taxes: float
+    post_tax_deductions: float
+    net_pay: float
+    employee_401k: float
+    employer_401k_match: float
+    life_choice: float = 0.0
