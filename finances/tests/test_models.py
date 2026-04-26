@@ -84,3 +84,13 @@ def test_parsed_payslip_fields():
     assert p.net_pay == 4801.87
     assert p.employee_401k == 1035.39
     assert p.life_choice == 1129.17
+
+def test_transaction_from_create_sets_created_at():
+    from backend.models import TransactionCreate, Transaction
+    create = TransactionCreate(
+        date=date(2026, 4, 25), amount=10.0, merchant="Test",
+        category="Other", type="expense",
+    )
+    t = Transaction.from_create(create, source="web")
+    assert t.created_at != ""
+    assert "T" in t.created_at  # ISO-8601 datetime has a T separator

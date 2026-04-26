@@ -1,5 +1,5 @@
 from pydantic import BaseModel, field_validator
-from datetime import date as date_type
+from datetime import date as date_type, datetime as datetime_type
 from typing import Literal, Optional
 import uuid
 
@@ -35,10 +35,16 @@ class TransactionUpdate(BaseModel):
 class Transaction(TransactionCreate):
     id: str
     source: TransactionSource
+    created_at: str = ""
 
     @classmethod
     def from_create(cls, data: TransactionCreate, source: TransactionSource) -> "Transaction":
-        return cls(**data.model_dump(), id=str(uuid.uuid4()), source=source)
+        return cls(
+            **data.model_dump(),
+            id=str(uuid.uuid4()),
+            source=source,
+            created_at=datetime_type.utcnow().isoformat(),
+        )
 
 
 class Category(BaseModel):

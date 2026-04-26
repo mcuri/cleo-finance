@@ -27,9 +27,9 @@ def init():
 
     vals.update(
         spreadsheetId=settings.google_sheets_id,
-        range="Transactions!A1:H1",
+        range="Transactions!A1:I1",
         valueInputOption="RAW",
-        body={"values": [["id", "date", "amount", "merchant", "category", "type", "source", "notes"]]},
+        body={"values": [["id", "date", "amount", "merchant", "category", "type", "source", "notes", "created_at"]]},
     ).execute()
 
     rows = [["name", "predefined"]] + [[c, "TRUE"] for c in PREDEFINED]

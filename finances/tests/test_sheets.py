@@ -97,3 +97,43 @@ def test_append_payslip(sheets_client, mock_service):
     assert row[9] == 1035.39   # employee_401k
     assert row[10] == 1035.39  # employer_401k_match
     assert row[11] == 1129.17  # life_choice
+
+def test_append_transaction_includes_created_at(sheets_client, mock_service):
+    t = Transaction(
+        id="abc123",
+        date=date(2026, 4, 20),
+        amount=47.50,
+        merchant="Trader Joe's",
+        category="Groceries",
+        type="expense",
+        source="web",
+        created_at="2026-04-20T10:00:00",
+    )
+    sheets_client.append_transaction(t)
+    kwargs = mock_service.spreadsheets().values().append.call_args[1]
+    assert kwargs["range"] == "Transactions!A:I"
+    row = kwargs["body"]["values"][0]
+    assert len(row) == 9
+    assert row[8] == "2026-04-20T10:00:00"
+
+
+def test_get_all_transactions_reads_created_at(sheets_client, mock_service):
+    mock_service.spreadsheets().values().get().execute.return_value = {
+        "values": [[
+            "id1", "2026-04-20", "47.50", "Trader Joe's",
+            "Groceries", "expense", "web", "", "2026-04-20T10:00:00",
+        ]]
+    }
+    result = sheets_client.get_all_transactions()
+    assert result[0].created_at == "2026-04-20T10:00:00"
+
+
+def test_get_all_transactions_missing_created_at_defaults_empty(sheets_client, mock_service):
+    mock_service.spreadsheets().values().get().execute.return_value = {
+        "values": [[
+            "id1", "2026-04-20", "47.50", "Trader Joe's",
+            "Groceries", "expense", "web",
+        ]]
+    }
+    result = sheets_client.get_all_transactions()
+    assert result[0].created_at == ""

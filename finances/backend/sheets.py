@@ -49,10 +49,11 @@ class SheetsClient:
             t.type,
             t.source,
             t.notes or "",
+            t.created_at,
         ]
         self._values().append(
             spreadsheetId=self.spreadsheet_id,
-            range="Transactions!A:H",
+            range="Transactions!A:I",
             valueInputOption="RAW",
             body={"values": [row]},
         ).execute()
@@ -82,7 +83,7 @@ class SheetsClient:
     def get_all_transactions(self) -> List[Transaction]:
         result = self._values().get(
             spreadsheetId=self.spreadsheet_id,
-            range="Transactions!A2:H",
+            range="Transactions!A2:I",
         ).execute()
         rows = result.get("values", [])
         transactions = []
@@ -98,6 +99,7 @@ class SheetsClient:
                 type=row[5],
                 source=row[6],
                 notes=row[7] if len(row) > 7 and row[7] else None,
+                created_at=row[8] if len(row) > 8 else "",
             ))
         return transactions
 
@@ -134,32 +136,32 @@ class SheetsClient:
                 # Get the current transaction data
                 current_result = self._values().get(
                     spreadsheetId=self.spreadsheet_id,
-                    range=f"Transactions!A{idx+1}:H{idx+1}",
+                    range=f"Transactions!A{idx+1}:I{idx+1}",
                 ).execute()
                 current_row = current_result.get("values", [[]])[0]
-                
+
                 # Update the fields
                 updated_row = current_row.copy()
                 field_map = {
                     'date': 1,
-                    'amount': 2, 
+                    'amount': 2,
                     'merchant': 3,
                     'category': 4,
                     'type': 5,
                     'notes': 7
                 }
-                
+
                 for field, value in updates.items():
                     if field in field_map:
                         if field == 'date' and hasattr(value, 'isoformat'):
                             updated_row[field_map[field]] = value.isoformat()
                         else:
                             updated_row[field_map[field]] = str(value)
-                
+
                 # Update the row
                 self._values().update(
                     spreadsheetId=self.spreadsheet_id,
-                    range=f"Transactions!A{idx+1}:H{idx+1}",
+                    range=f"Transactions!A{idx+1}:I{idx+1}",
                     valueInputOption="RAW",
                     body={"values": [updated_row]},
                 ).execute()
