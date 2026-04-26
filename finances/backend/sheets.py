@@ -6,7 +6,7 @@ from datetime import date as date_type, datetime
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 
-from backend.models import Transaction, Category, TransactionSource
+from backend.models import Transaction, Category, TransactionSource, ParsedPayslip
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 _SERVICE_ACCOUNT_FILE = os.path.join(os.path.dirname(__file__), "service-account.json")
@@ -57,6 +57,28 @@ class SheetsClient:
             body={"values": [row]},
         ).execute()
 
+    def append_payslip(self, p: ParsedPayslip) -> None:
+        row = [
+            p.company,
+            p.pay_period_begin.isoformat(),
+            p.pay_period_end.isoformat(),
+            p.check_date.isoformat(),
+            p.gross_pay,
+            p.pre_tax_deductions,
+            p.employee_taxes,
+            p.post_tax_deductions,
+            p.net_pay,
+            p.employee_401k,
+            p.employer_401k_match,
+            p.life_choice,
+        ]
+        self._values().append(
+            spreadsheetId=self.spreadsheet_id,
+            range="Payslips!A:L",
+            valueInputOption="RAW",
+            body={"values": [row]},
+        ).execute()
+
     def get_all_transactions(self) -> List[Transaction]:
         result = self._values().get(
             spreadsheetId=self.spreadsheet_id,
@@ -96,6 +118,50 @@ class SheetsClient:
                         "startIndex": idx,
                         "endIndex": idx + 1,
                     }}}]},
+                ).execute()
+                return True
+        return False
+
+    def update_transaction(self, transaction_id: str, updates: dict) -> bool:
+        """Update a transaction with the given field updates."""
+        result = self._values().get(
+            spreadsheetId=self.spreadsheet_id,
+            range="Transactions!A:A",
+        ).execute()
+        rows = result.get("values", [])
+        for idx, row in enumerate(rows):
+            if row and row[0] == transaction_id:
+                # Get the current transaction data
+                current_result = self._values().get(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f"Transactions!A{idx+1}:H{idx+1}",
+                ).execute()
+                current_row = current_result.get("values", [[]])[0]
+                
+                # Update the fields
+                updated_row = current_row.copy()
+                field_map = {
+                    'date': 1,
+                    'amount': 2, 
+                    'merchant': 3,
+                    'category': 4,
+                    'type': 5,
+                    'notes': 7
+                }
+                
+                for field, value in updates.items():
+                    if field in field_map:
+                        if field == 'date' and hasattr(value, 'isoformat'):
+                            updated_row[field_map[field]] = value.isoformat()
+                        else:
+                            updated_row[field_map[field]] = str(value)
+                
+                # Update the row
+                self._values().update(
+                    spreadsheetId=self.spreadsheet_id,
+                    range=f"Transactions!A{idx+1}:H{idx+1}",
+                    valueInputOption="RAW",
+                    body={"values": [updated_row]},
                 ).execute()
                 return True
         return False
