@@ -227,7 +227,7 @@ export default function Dashboard() {
               <LabelList
                 dataKey="expenses"
                 position="top"
-                formatter={(v: number) => v === 0 ? '' : `$${v.toFixed(0)}`}
+                formatter={(v: number | string | undefined) => !Number(v) ? '' : `$${Number(v).toFixed(0)}`}
                 style={{ fontSize: 10, fill: "#94a3b8" }}
               />
             </Bar>
@@ -250,7 +250,7 @@ export default function Dashboard() {
               <LabelList
                 dataKey="rate"
                 position="top"
-                formatter={(v: number) => v === 0 ? '' : `${v > 0 ? '+' : ''}${v}%`}
+                formatter={(v: number | string | undefined) => { const n = Number(v); return !n ? '' : `${n > 0 ? '+' : ''}${n}%`; }}
                 style={{ fontSize: 10, fill: "#94a3b8" }}
               />
             </Bar>
