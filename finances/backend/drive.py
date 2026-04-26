@@ -43,8 +43,9 @@ def _get_or_create_folder(service, name: str, parent_id: str) -> str:
 
 
 def _find_root_folder(service) -> Optional[str]:
+    safe_name = _ROOT_FOLDER_NAME.replace("'", "\\'")
     query = (
-        f"name = '{_ROOT_FOLDER_NAME}' "
+        f"name = '{safe_name}' "
         f"and mimeType = 'application/vnd.google-apps.folder' and trashed = false"
     )
     results = service.files().list(q=query, fields="files(id)").execute()

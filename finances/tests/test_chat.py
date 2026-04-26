@@ -174,6 +174,26 @@ def test_chat_payslip_pdf_saves_payslip_and_transaction(client, mock_sheets):
     assert saved_tx.source == "payslip"
 
 
+def test_chat_cc_bill_pdf_uploads_to_drive(client, mock_sheets):
+    with patch("backend.chat._is_credit_card_bill", return_value=True), \
+         patch("backend.chat.parse_credit_card_bill_pdf", return_value=[]), \
+         patch("backend.chat.categorize_transactions"), \
+         patch("backend.chat.dedup_and_save_credit_card_transactions", return_value=([], 0)), \
+         patch("backend.chat.DriveClient") as mock_drive_cls, \
+         patch("backend.chat.anthropic.Anthropic") as mock_cls, \
+         patch("backend.chat.log_usage"):
+        _mock_claude(mock_cls, "CC bill processed!")
+        resp = client.post(
+            "/api/chat",
+            data={"message": "here is my cc bill", "history": "[]"},
+            files={"file": ("statement.pdf", b"%PDF-1.4", "application/pdf")},
+        )
+    assert resp.status_code == 200
+    mock_drive_cls.return_value.upload_pdf.assert_called_once()
+    call_args = mock_drive_cls.return_value.upload_pdf.call_args
+    assert call_args[0][2] == "Credit Card Bills"
+
+
 def test_chat_payslip_pdf_uploads_to_drive(client, mock_sheets):
     from backend.models import ParsedPayslip
     parsed = ParsedPayslip(
