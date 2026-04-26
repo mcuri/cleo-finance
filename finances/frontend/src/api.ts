@@ -1,4 +1,4 @@
-import type { Transaction, TransactionCreate, Category, ImportPreviewRow, ImportPreviewError } from "./types";
+import type { Transaction, TransactionCreate, Category } from "./types";
 
 const BASE = import.meta.env.VITE_API_BASE ?? "";
 
@@ -36,18 +36,6 @@ export const api = {
   deleteCategory: (name: string) =>
     req<void>(`/api/categories/${encodeURIComponent(name)}`, { method: "DELETE" }),
 
-  importPreview: (file: File) => {
-    const form = new FormData();
-    form.append("file", file);
-    return req<{ valid_rows: ImportPreviewRow[]; errors: ImportPreviewError[] }>(
-      "/api/import/preview", { method: "POST", body: form }
-    );
-  },
-  importConfirm: (file: File) => {
-    const form = new FormData();
-    form.append("file", file);
-    return req<{ imported: number }>("/api/import/confirm", { method: "POST", body: form });
-  },
   chatForm: (form: FormData) =>
     req<{ reply: string }>("/api/chat", { method: "POST", body: form }),
 };

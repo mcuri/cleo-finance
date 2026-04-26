@@ -26,19 +26,6 @@ export interface Category {
   predefined: boolean;
 }
 
-export interface ImportPreviewRow {
-  date: string;
-  amount: number;
-  merchant: string;
-  category: string;
-  type: string;
-}
-
-export interface ImportPreviewError {
-  row: number;
-  reason: string;
-}
-
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
