@@ -134,3 +134,41 @@ def test_chat_with_pdf_file(client, mock_sheets):
 
     assert resp.status_code == 200
     assert mock_sheets.append_transaction.call_count == 2
+
+
+def test_chat_payslip_pdf_saves_payslip_and_transaction(client, mock_sheets):
+    from backend.models import ParsedPayslip
+    parsed = ParsedPayslip(
+        company="Meta Platforms, Inc.",
+        pay_period_begin=date(2026, 4, 6),
+        pay_period_end=date(2026, 4, 19),
+        check_date=date(2026, 4, 24),
+        gross_pay=8628.24,
+        pre_tax_deductions=1067.69,
+        employee_taxes=2758.68,
+        post_tax_deductions=0.00,
+        net_pay=4801.87,
+        employee_401k=1035.39,
+        employer_401k_match=1035.39,
+        life_choice=1129.17,
+    )
+
+    with patch("backend.chat._is_credit_card_bill", return_value=False), \
+         patch("backend.chat._is_payslip", return_value=True), \
+         patch("backend.chat.parse_payslip", return_value=[parsed]), \
+         patch("backend.chat.anthropic.Anthropic") as mock_cls, \
+         patch("backend.chat.log_usage"):
+        _mock_claude(mock_cls, "Payslip saved!")
+        resp = client.post(
+            "/api/chat",
+            data={"message": "here is my payslip", "history": "[]"},
+            files={"file": ("payslip.pdf", b"%PDF-1.4 payslip content", "application/pdf")},
+        )
+
+    assert resp.status_code == 200
+    mock_sheets.append_payslip.assert_called_once_with(parsed)
+    mock_sheets.append_transaction.assert_called_once()
+    saved_tx = mock_sheets.append_transaction.call_args[0][0]
+    assert saved_tx.amount == 4801.87
+    assert saved_tx.type == "income"
+    assert saved_tx.source == "payslip"

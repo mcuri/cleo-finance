@@ -2,6 +2,7 @@ import base64
 import json
 import logging
 from datetime import date as date_type
+from pathlib import Path
 from typing import List, Optional, Tuple
 
 import anthropic
@@ -12,7 +13,13 @@ from pydantic import BaseModel
 from backend.anthropic_logger import log_usage
 from backend.claude_parser import parse_expense_text, parse_pdf_statement, parse_receipt_image
 from backend.config import get_settings
+from backend.credit_card_parser import (
+    categorize_transactions,
+    dedup_and_save_credit_card_transactions,
+    parse_credit_card_bill_pdf,
+)
 from backend.models import ParsedExpense, Transaction, TransactionCreate
+from backend.payslip_parser import parse_payslip
 from backend.sheets import SheetsClient
 
 logger = logging.getLogger(__name__)
@@ -20,21 +27,21 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api", tags=["chat"])
 
 _MODEL = "claude-haiku-4-5-20251001"
-_SYSTEM = (
-    "You are Cleo, a personal finance assistant backed by a real app.\n\n"
-    "The system context below includes a [BACKEND RESULT] line. "
-    "That line is machine-generated output from the backend — it is factual, not your belief. "
-    "Report it to the user directly as fact. "
-    "Never say 'I think', 'I believe', 'I cannot confirm', or hedge about whether saving worked. "
-    "Never say 'I cannot save' or 'you need to save elsewhere' — saving is handled entirely by "
-    "the backend before you respond.\n\n"
-    "If [BACKEND RESULT] says expenses were saved: confirm them ('Saved X expenses: ...').\n"
-    "If [BACKEND RESULT] says the format was not recognized: tell the user their message format "
-    "wasn't understood by the parser and give examples that work "
-    "(e.g. 'spent $12.50 at Trader Joe\\'s on Groceries', or attach a receipt image or PDF).\n\n"
-    "Answer questions about transaction history using the data below. "
-    "Be brief — 2-4 sentences unless detail is needed."
-)
+
+
+def _load_cleo_persona() -> str:
+    """Load Cleo persona from markdown file."""
+    persona_path = Path(__file__).parent / "cleo_persona.md"
+    with open(persona_path, "r") as f:
+        content = f.read()
+    # Remove the markdown heading and strip whitespace
+    lines = content.split("\n")
+    if lines and lines[0].startswith("# "):
+        lines = lines[1:]
+    return "\n".join(lines).strip()
+
+
+_SYSTEM = _load_cleo_persona()
 
 
 class ChatMessage(BaseModel):
@@ -52,6 +59,60 @@ def get_sheets_client() -> SheetsClient:
 
 def _get_sheets_client():
     return _self.get_sheets_client()
+
+
+def _is_credit_card_bill(file_bytes: bytes) -> bool:
+    """Detect if PDF is a credit card statement by checking for known markers."""
+    try:
+        import pdfplumber
+        import io
+    except ImportError:
+        logger.warning("pdfplumber is not installed; skipping credit card bill detection")
+        return False
+
+    try:
+        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+            for page in pdf.pages:
+                text = page.extract_text() or ""
+                lower = text.lower()
+                # Check for credit card / statement markers
+                if any(
+                    marker in lower
+                    for marker in [
+                        "stanford fcu",
+                        "credit union",
+                        "statement closing date",
+                        "new balance",
+                        "minimum payment",
+                        "previous balance",
+                        "available credit",
+                        "amount due",
+                        "tran date",
+                    ]
+                ):
+                    return True
+    except Exception as e:
+        logger.warning(f"Error detecting credit card bill: {e}")
+    return False
+
+
+def _is_payslip(file_bytes: bytes) -> bool:
+    try:
+        import pdfplumber
+        import io
+    except ImportError:
+        return False
+
+    markers = ["net pay", "gross pay", "pay period", "pre tax deductions", "check date"]
+    try:
+        with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
+            if pdf.pages:
+                text = (pdf.pages[0].extract_text() or "").lower()
+                found = sum(1 for m in markers if m in text)
+                return found >= 3
+    except Exception as e:
+        logger.warning(f"Error detecting payslip: {e}")
+    return False
 
 
 def _save_expenses(
@@ -99,6 +160,7 @@ async def chat(
     saved: List[Transaction] = []
     skipped_count = 0
     user_content: object = message
+    result = None
 
     if file:
         file_bytes = await file.read()
@@ -108,7 +170,61 @@ async def chat(
             saved, skipped_count = _save_expenses(parse_receipt_image(file_bytes, ct), sheets)
             file_block = {"type": "image", "source": {"type": "base64", "media_type": ct, "data": b64}}
         elif ct == "application/pdf":
-            saved, skipped_count = _save_expenses(parse_pdf_statement(file_bytes), sheets)
+            # Check if this is a credit card statement
+            if _is_credit_card_bill(file_bytes):
+                logger.info("Detected credit card statement, using specialized parser")
+                try:
+                    cc_transactions = parse_credit_card_bill_pdf(file_bytes)
+                    logger.info(f"Parsed {len(cc_transactions)} transactions from credit card bill")
+                    await categorize_transactions(cc_transactions)
+                    logger.info("Categorized transactions")
+                    saved, skipped_count = dedup_and_save_credit_card_transactions(
+                        cc_transactions, sheets
+                    )
+                    logger.info(f"Saved {len(saved)} credit card transactions, skipped {skipped_count}")
+                except Exception as e:
+                    logger.error(f"Error parsing credit card bill: {e}")
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Failed to parse credit card statement: {str(e)}",
+                    )
+            elif _is_payslip(file_bytes):
+                parsed_payslips = parse_payslip(file_bytes)
+                if not parsed_payslips:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Could not extract payslip data from this PDF.",
+                    )
+                payslip_summaries = []
+                for p in parsed_payslips:
+                    sheets.append_payslip(p)
+                    income_tx = Transaction.from_create(
+                        TransactionCreate(
+                            date=p.check_date,
+                            amount=p.net_pay,
+                            merchant=p.company,
+                            category="Income",
+                            type="income",
+                            notes=f"Pay period: {p.pay_period_begin} - {p.pay_period_end}",
+                        ),
+                        source="payslip",
+                    )
+                    sheets.append_transaction(income_tx)
+                    saved.append(income_tx)
+                    payslip_summaries.append(
+                        f"{p.company} (Gross: ${p.gross_pay:,.2f}, Net: ${p.net_pay:,.2f}, Date: {p.check_date})"
+                    )
+                result = (
+                    f"[BACKEND RESULT] Saved {len(parsed_payslips)} payslip(s) to Payslips sheet "
+                    f"and {len(saved)} income transaction(s): "
+                    + "; ".join(payslip_summaries)
+                    + "."
+                )
+            else:
+                # Generic PDF statement parser
+                saved, skipped_count = _save_expenses(
+                    parse_pdf_statement(file_bytes), sheets
+                )
             file_block = {"type": "document", "source": {"type": "base64", "media_type": "application/pdf", "data": b64}}
         else:
             raise HTTPException(status_code=400, detail="Unsupported file type. Send an image or PDF.")
@@ -126,17 +242,18 @@ async def chat(
 
     # 3. Build system prompt
     system = _SYSTEM + f"\n\nTransaction data: {tx_json}"
-    if saved:
-        summary = ", ".join(
-            f"${t.amount:.2f} at {t.merchant} [{t.category}] on {t.date}" for t in saved
-        )
-        result = f"[BACKEND RESULT] Saved {len(saved)} expense(s): {summary}."
-        if skipped_count:
-            result += f" Skipped {skipped_count} duplicate(s)."
-    elif skipped_count:
-        result = f"[BACKEND RESULT] All {skipped_count} expense(s) were duplicates — already in your history."
-    else:
-        result = "[BACKEND RESULT] 0 expenses saved — message format not recognized by the expense parser."
+    if result is None:
+        if saved:
+            summary = ", ".join(
+                f"${t.amount:.2f} at {t.merchant} [{t.category}] on {t.date}" for t in saved
+            )
+            result = f"[BACKEND RESULT] Saved {len(saved)} expense(s): {summary}."
+            if skipped_count:
+                result += f" Skipped {skipped_count} duplicate(s)."
+        elif skipped_count:
+            result = f"[BACKEND RESULT] All {skipped_count} expense(s) were duplicates — already in your history."
+        else:
+            result = "[BACKEND RESULT] 0 expenses saved — message format not recognized by the expense parser."
     system += f"\n\n{result}"
 
     # 4. Build messages list
