@@ -258,3 +258,27 @@ def test_chat_drive_failure_does_not_affect_response(client, mock_sheets):
             files={"file": ("payslip.pdf", b"%PDF-1.4", "application/pdf")},
         )
     assert resp.status_code == 200
+
+
+def test_chat_includes_profile_in_system_prompt(client):
+    with patch("backend.chat.parse_expense_text", return_value=[]), \
+         patch("backend.chat.anthropic.Anthropic") as mock_cls, \
+         patch("backend.chat.log_usage"), \
+         patch("backend.chat.load_user_profile", return_value="- Saves regularly"), \
+         patch("backend.chat.asyncio.create_task"):
+        _mock_claude(mock_cls, "OK")
+        resp = client.post("/api/chat", data={"message": "hello", "history": "[]"})
+    assert resp.status_code == 200
+    call_kwargs = mock_cls.return_value.messages.create.call_args
+    assert "Saves regularly" in call_kwargs.kwargs["system"]
+
+
+def test_chat_fires_extraction_task(client):
+    with patch("backend.chat.parse_expense_text", return_value=[]), \
+         patch("backend.chat.anthropic.Anthropic") as mock_cls, \
+         patch("backend.chat.log_usage"), \
+         patch("backend.chat.load_user_profile", return_value=""), \
+         patch("backend.chat.asyncio.create_task") as mock_task:
+        _mock_claude(mock_cls, "OK")
+        client.post("/api/chat", data={"message": "hello", "history": "[]"})
+    assert mock_task.called

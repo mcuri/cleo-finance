@@ -1,3 +1,4 @@
+import asyncio
 import base64
 import json
 import logging
@@ -12,6 +13,7 @@ from pydantic import BaseModel
 
 from backend.anthropic_logger import log_usage
 from backend.claude_parser import parse_expense_text, parse_pdf_statement, parse_receipt_image
+from backend.profile_extractor import extract_and_update_profile, load_user_profile
 from backend.config import get_settings
 from backend.credit_card_parser import (
     categorize_transactions,
@@ -275,6 +277,9 @@ async def chat(
         else:
             result = "[BACKEND RESULT] 0 expenses saved — message format not recognized by the expense parser."
     system += f"\n\n{result}"
+    profile = load_user_profile()
+    if profile:
+        system += f"\n\nUser financial profile (behavioral patterns observed over time):\n{profile}"
 
     # 4. Build messages list
     messages = [{"role": m.role, "content": m.content} for m in history_list[-20:]]
@@ -289,6 +294,7 @@ async def chat(
         messages=messages,
     )
     reply = response.content[0].text
+    asyncio.create_task(extract_and_update_profile(message, reply))
 
     # 6. Log usage
     log_usage(response, "chat")
