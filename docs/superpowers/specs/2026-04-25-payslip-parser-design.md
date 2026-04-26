@@ -9,7 +9,7 @@
 
 When the user uploads a payslip PDF through the chat, the system:
 1. Detects it as a payslip (not a credit card bill or generic PDF)
-2. Extracts 11 summary fields using Claude
+2. Extracts 12 summary fields using Claude
 3. Writes a detailed row to a new **Payslips** Google Sheet tab
 4. Writes the net pay as an income transaction to the **Transactions** tab
 5. Cleo confirms both saves in the chat response
@@ -35,6 +35,7 @@ class ParsedPayslip(BaseModel):
     net_pay: float
     employee_401k: float
     employer_401k_match: float
+    life_choice: float = 0.0
 ```
 
 ### `TransactionSource` (updated, `backend/models.py`)
@@ -53,9 +54,9 @@ TransactionSource = Literal["web", "csv", "telegram", "credit_card", "payslip"]
 
 New sheet tab named `Payslips`, initialized by `init_sheets.py`. Column headers (row 1):
 
-| A | B | C | D | E | F | G | H | I | J | K |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Company | Pay Period Begin | Pay Period End | Check Date | Gross Pay | Pre Tax Deductions | Employee Taxes | Post Tax Deductions | Net Pay | 401k Salary | 401k Employer Match |
+| A | B | C | D | E | F | G | H | I | J | K | L |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Company | Pay Period Begin | Pay Period End | Check Date | Gross Pay | Pre Tax Deductions | Employee Taxes | Post Tax Deductions | Net Pay | 401k Salary | 401k Employer Match | Life@ Choice |
 
 Data rows start at row 2. One row per uploaded payslip.
 
@@ -83,7 +84,7 @@ def parse_payslip(pdf_bytes: bytes) -> Optional[ParsedPayslip]
 **Implementation:**
 - Encodes PDF as base64
 - Sends to `claude-haiku-4-5-20251001` as a `document` content block (same pattern as `parse_pdf_statement` in `claude_parser.py`)
-- Prompt asks for exactly 11 fields as a JSON object matching the `ParsedPayslip` schema
+- Prompt asks for exactly 12 fields as a JSON object matching the `ParsedPayslip` schema
 - Returns `None` on malformed or missing JSON
 - Calls `log_usage(response, "parse_payslip")`
 
@@ -92,7 +93,7 @@ def parse_payslip(pdf_bytes: bytes) -> Optional[ParsedPayslip]
 {"company": "...", "pay_period_begin": "YYYY-MM-DD", "pay_period_end": "YYYY-MM-DD",
  "check_date": "YYYY-MM-DD", "gross_pay": 0.00, "pre_tax_deductions": 0.00,
  "employee_taxes": 0.00, "post_tax_deductions": 0.00, "net_pay": 0.00,
- "employee_401k": 0.00, "employer_401k_match": 0.00}
+ "employee_401k": 0.00, "employer_401k_match": 0.00, "life_choice": 0.00}
 ```
 
 ---
@@ -105,13 +106,13 @@ New method on `SheetsClient`:
 def append_payslip(self, p: ParsedPayslip) -> None
 ```
 
-Appends a row to `Payslips!A:K` with the 11 fields in column order. Dates serialized as `YYYY-MM-DD` strings.
+Appends a row to `Payslips!A:L` with the 12 fields in column order. Dates serialized as `YYYY-MM-DD` strings.
 
 ---
 
 ## Updated: `backend/init_sheets.py`
 
-Add Payslips tab initialization: write the 11 column headers to `Payslips!A1:K1` if the sheet exists, or log a warning if not. Pattern matches existing Transactions/Categories tab setup.
+Add Payslips tab initialization: write the 12 column headers to `Payslips!A1:L1` if the sheet exists, or log a warning if not. Pattern matches existing Transactions/Categories tab setup.
 
 ---
 
