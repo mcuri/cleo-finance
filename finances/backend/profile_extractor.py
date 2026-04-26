@@ -86,10 +86,18 @@ def _call_claude_extract(exchange: str, current_profile: str) -> dict:
     client = anthropic.Anthropic(api_key=get_settings().anthropic_api_key)
     response = client.messages.create(
         model=_MODEL,
-        max_tokens=512,
+        max_tokens=1024,
         messages=[{"role": "user", "content": prompt}],
     )
-    return json.loads(response.content[0].text)
+    if not response.content:
+        logger.warning("Profile extractor: empty response from Claude")
+        return {"update": False}
+    raw = response.content[0].text.strip().removeprefix("```json").removesuffix("```").strip()
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        logger.warning("Profile extractor: unexpected Claude response: %s", raw)
+        return {"update": False}
 
 
 async def extract_and_update_profile(
@@ -97,10 +105,10 @@ async def extract_and_update_profile(
 ) -> None:
     try:
         current_profile = load_user_profile(notes_file)
-        exchange = f"User: {user_message}\nAssistant: {assistant_reply}"
+        exchange = f"[USER]\n{user_message}\n\n[ASSISTANT]\n{assistant_reply}"
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, _call_claude_extract, exchange, current_profile)
         if result.get("update") and result.get("profile") and result.get("log_entry"):
             _write_profile_and_log(result["profile"], result["log_entry"], notes_file)
     except Exception as e:
-        logger.warning(f"Profile extraction failed: {e}")
+        logger.warning("Profile extraction failed: %s", e)

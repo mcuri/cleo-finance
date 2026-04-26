@@ -100,11 +100,15 @@ async def test_extract_and_update_profile_writes_on_update(tmp_path):
         "profile": "- Tracks expenses regularly",
         "log_entry": "Mentioned dining budget",
     }
-    with patch("backend.profile_extractor._call_claude_extract", return_value=mock_result):
+    with patch("backend.profile_extractor._call_claude_extract", return_value=mock_result) as mock_fn:
         await extract_and_update_profile("I spent $20 on lunch", "Saved! $20 at Chipotle.", f)
     content = f.read_text()
     assert "Tracks expenses regularly" in content
     assert "Mentioned dining budget" in content
+    call_args = mock_fn.call_args
+    assert "[USER]" in call_args.args[0]
+    assert "I spent $20 on lunch" in call_args.args[0]
+    assert "[ASSISTANT]" in call_args.args[0]
 
 
 @pytest.mark.asyncio
@@ -125,3 +129,16 @@ async def test_extract_and_update_profile_swallows_exceptions(tmp_path):
     f.write_text("# Notes\n")
     with patch("backend.profile_extractor._call_claude_extract", side_effect=Exception("API down")):
         await extract_and_update_profile("hello", "Hi!", f)  # must not raise
+
+
+@pytest.mark.asyncio
+async def test_extract_and_update_profile_no_write_on_partial_response(tmp_path):
+    from backend.profile_extractor import extract_and_update_profile
+    f = tmp_path / "notes.md"
+    f.write_text("# Notes\n")
+    # update: true but missing log_entry
+    partial_result = {"update": True, "profile": "- Some pattern"}
+    with patch("backend.profile_extractor._call_claude_extract", return_value=partial_result):
+        await extract_and_update_profile("hello", "Hi!", f)
+    content = f.read_text()
+    assert "## Current Profile" not in content
