@@ -1,13 +1,12 @@
 import { useEffect, useState, useMemo } from "react";
 import {
-  BarChart, Bar, LineChart, Line,
-  XAxis, YAxis, Tooltip, Legend,
-  ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, Tooltip,
+  ResponsiveContainer, Cell, ReferenceLine, LabelList,
 } from "recharts";
 import { api } from "../api";
 import type { Transaction } from "../types";
-import { presetToRange, buildTrendData } from "../utils/dateFilter";
-import type { DateFilter, Preset } from "../utils/dateFilter";
+import { presetToRange, buildMonthlySavingsData } from "../utils/dateFilter";
+import type { DateFilter, Preset, MonthlySavingsPoint } from "../utils/dateFilter";
 
 const PRESETS: { key: Exclude<Preset, 'custom'>; label: string }[] = [
   { key: 'this_week',  label: 'This Week'  },
@@ -15,6 +14,11 @@ const PRESETS: { key: Exclude<Preset, 'custom'>; label: string }[] = [
   { key: 'last_month', label: 'Last Month' },
   { key: '3_months',   label: '3 Months'   },
   { key: '6_months',   label: '6 Months'   },
+];
+
+const CATEGORY_COLORS = [
+  '#6366f1', '#34d399', '#f59e0b', '#f87171',
+  '#818cf8', '#a3e635', '#fb923c', '#94a3b8',
 ];
 
 function filterTitle(filter: DateFilter): string {
@@ -26,6 +30,21 @@ function filterTitle(filter: DateFilter): string {
   if (filter.preset === '3_months') return 'Last 3 Months';
   if (filter.preset === '6_months') return 'Last 6 Months';
   return `${filter.from} – ${filter.to}`;
+}
+
+function SavingsTooltip({ active, payload }: { active?: boolean; payload?: Array<{ payload: MonthlySavingsPoint }> }) {
+  if (!active || !payload?.length) return null;
+  const d = payload[0].payload;
+  return (
+    <div style={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, padding: "8px 12px", fontSize: 12, color: "#e2e8f0" }}>
+      <div style={{ fontWeight: 600, marginBottom: 4 }}>{d.label}</div>
+      <div>Net: <span style={{ color: d.net >= 0 ? "#34d399" : "#f87171" }}>${d.net.toFixed(2)}</span></div>
+      <div>Savings rate: <span style={{ color: "#818cf8" }}>{d.rate}%</span></div>
+      <div style={{ color: "#64748b", marginTop: 4 }}>
+        Income: ${d.income.toFixed(2)} · Expenses: ${d.expenses.toFixed(2)}
+      </div>
+    </div>
+  );
 }
 
 export default function Dashboard() {
@@ -48,6 +67,7 @@ export default function Dashboard() {
   const totalIncome   = filteredTransactions.filter(t => t.type === "income" ).reduce((s, t) => s + t.amount, 0);
   const totalExpenses = filteredTransactions.filter(t => t.type === "expense").reduce((s, t) => s + t.amount, 0);
   const net = totalIncome - totalExpenses;
+  const savingsRate = totalIncome > 0 ? Math.round(net / totalIncome * 100) : null;
 
   const categoryData = useMemo(() => {
     const byCategory: Record<string, number> = {};
@@ -59,9 +79,9 @@ export default function Dashboard() {
       .sort((a, b) => b.amount - a.amount);
   }, [filteredTransactions]);
 
-  const trendData = useMemo(
-    () => buildTrendData(filteredTransactions, dateFilter.from, dateFilter.to),
-    [filteredTransactions, dateFilter],
+  const monthlySavingsData = useMemo(
+    () => buildMonthlySavingsData(transactions, dateFilter.from, dateFilter.to),
+    [transactions, dateFilter],
   );
 
   const selectPreset = (key: Exclude<Preset, 'custom'>) => {
@@ -108,7 +128,7 @@ export default function Dashboard() {
           <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>From</span>
           <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)} style={{ width: 'auto', marginTop: 0 }} />
           <span style={{ fontSize: '0.875rem', color: 'var(--text-secondary)' }}>To</span>
-          <input type="date" value={customTo}   onChange={e => setCustomTo(e.target.value)}   style={{ width: 'auto', marginTop: 0 }} />
+          <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)} style={{ width: 'auto', marginTop: 0 }} />
           <button className="primary" onClick={applyCustom}
             disabled={!customFrom || !customTo || customFrom > customTo}
             style={{ width: 'auto' }}>
@@ -132,33 +152,67 @@ export default function Dashboard() {
             {net >= 0 ? "+" : ""}${net.toFixed(2)}
           </div>
         </div>
+        <div className="card" style={{ border: "1px solid var(--accent)" }}>
+          <div style={{ color: "var(--text-muted)", fontSize: "0.8rem", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "0.5rem" }}>Savings Rate</div>
+          {savingsRate === null ? (
+            <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "var(--text-muted)" }}>—</div>
+          ) : (
+            <>
+              <div style={{ fontSize: "1.75rem", fontWeight: 700, color: "#818cf8" }}>{savingsRate}%</div>
+              <div style={{ background: "var(--bg)", borderRadius: "999px", height: "4px", marginTop: "0.5rem", overflow: "hidden" }}>
+                <div style={{ background: "var(--accent)", width: `${Math.min(savingsRate, 100)}%`, height: "100%", borderRadius: "999px" }} />
+              </div>
+            </>
+          )}
+        </div>
       </div>
 
       <h2>Spending by category</h2>
       <div className="card" style={{ marginBottom: "1.5rem" }}>
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={categoryData} margin={{ left: 10 }}>
-            <XAxis dataKey="category" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-            <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`}
-              contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#e2e8f0" }} />
-            <Bar dataKey="amount" fill="#6366f1" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        {categoryData.length === 0 ? (
+          <p style={{ color: "var(--text-muted)", margin: 0 }}>No expenses this period.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
+            {categoryData.map(({ category, amount }, i) => {
+              const pct = Math.round(amount / totalExpenses * 100);
+              return (
+                <div key={category} style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                  <div style={{ width: 110, textAlign: "right", fontSize: "0.8rem", color: "var(--text-secondary)", flexShrink: 0 }}>
+                    {category}
+                  </div>
+                  <div style={{ flex: 1, background: "var(--bg)", borderRadius: 4, height: 10, overflow: "hidden" }}>
+                    <div style={{ width: `${pct}%`, height: "100%", background: CATEGORY_COLORS[i % CATEGORY_COLORS.length], borderRadius: 4 }} />
+                  </div>
+                  <div style={{ width: 100, fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                    ${amount.toFixed(2)} · {pct}%
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
-      <h2>Trend</h2>
+      <h2>Monthly Savings</h2>
       <div className="card">
         <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={trendData} margin={{ left: 10 }}>
+          <BarChart data={monthlySavingsData} margin={{ left: 10, top: 20 }}>
             <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} />
-            <Tooltip formatter={(v) => `$${Number(v).toFixed(2)}`}
-              contentStyle={{ background: "#1e293b", border: "1px solid #334155", borderRadius: 8, color: "#e2e8f0" }} />
-            <Legend wrapperStyle={{ color: "#94a3b8", fontSize: 12 }} />
-            <Line type="monotone" dataKey="expenses" stroke="#f87171" strokeWidth={2} dot={false} />
-            <Line type="monotone" dataKey="income"   stroke="#34d399" strokeWidth={2} dot={false} />
-          </LineChart>
+            <YAxis tick={{ fontSize: 11, fill: "#94a3b8" }} axisLine={false} tickLine={false} tickFormatter={(v) => `$${v}`} />
+            <ReferenceLine y={0} stroke="#475569" strokeWidth={1} />
+            <Tooltip content={<SavingsTooltip />} />
+            <Bar dataKey="net" radius={[4, 4, 0, 0]}>
+              {monthlySavingsData.map((entry, index) => (
+                <Cell key={index} fill={entry.net >= 0 ? "#34d399" : "#f87171"} />
+              ))}
+              <LabelList
+                dataKey="rate"
+                position="top"
+                formatter={(v: number) => v === 0 ? '' : `${v > 0 ? '+' : ''}${v}%`}
+                style={{ fontSize: 10, fill: "#94a3b8" }}
+              />
+            </Bar>
+          </BarChart>
         </ResponsiveContainer>
       </div>
     </div>
