@@ -23,9 +23,15 @@ def load_user_profile(notes_file: Path = _NOTES_FILE) -> str:
     start = content.find(_PROFILE_HEADING)
     if start == -1:
         return ""
-    section_start = content.find("\n", start) + 1
+    nl = content.find("\n", start)
+    if nl == -1:
+        return ""
+    section_start = nl + 1
     if content[section_start:].startswith("_Last updated"):
-        section_start = content.find("\n", section_start) + 1
+        nl2 = content.find("\n", section_start)
+        if nl2 == -1:
+            return ""
+        section_start = nl2 + 1
     end = len(content)
     for marker in ["\n---", "\n## "]:
         pos = content.find(marker, section_start)
