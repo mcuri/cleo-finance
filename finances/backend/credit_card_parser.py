@@ -120,36 +120,29 @@ async def infer_category(description: str) -> str:
 
 def _clean_merchant_name(description: str) -> str:
     """Extract clean merchant name from raw transaction description."""
-    # Remove location codes, phone numbers, etc.
-    # E.g., "SAFEWAY #2606 SAN FRANCISCO CA" -> "Safeway"
-    # E.g., "EB *THE DINAH 2025 FES 801-413-7200 CA" -> "The Dinah"
-
-    # Remove alphanumeric reference numbers first (like 24610436Y03R4Apvw)
+    # Remove alphanumeric reference numbers at end (like 24610436Y03R4Apvw)
     desc = re.sub(r"\s+[A-Z0-9]{10,}\s*$", "", description, flags=re.IGNORECASE)
 
     # Remove location patterns at the end (CITY STATE/COUNTRY)
-    # Match 1-2 uppercase words followed by state
     desc = re.sub(r"\s+([A-Z]{2,}(?:\s+[A-Z]{2,})?)\s+(CA|TX|NY|WA|MX|US)\s*$", "", desc)
 
-    # Clean up "SQ *" prefix (Square payment)
+    # Strip payment processor prefixes first (before asterisk removal, so merchant words are preserved)
     desc = re.sub(r"^SQ\s\*", "", desc)
     desc = re.sub(r"^EB\s\*", "", desc)
     desc = re.sub(r"^PY\s\*", "", desc)
+    desc = re.sub(r"^MERPAGO\*", "", desc, flags=re.IGNORECASE)
+    desc = re.sub(r"^CLIP MX\*", "", desc, flags=re.IGNORECASE)
 
-    # Remove MERPAGO/CLIP payment processor prefix
-    if desc.startswith("MERPAGO*"):
-        desc = desc.replace("MERPAGO*", "")
-    if desc.startswith("CLIP MX*"):
-        desc = desc.replace("CLIP MX*", "")
+    # Remove order/session IDs after asterisk — only if the code contains digits
+    # (e.g. PRIME*ME7FM04U3 → PRIME, but SQ *MISSION and MERPAGO*LOSTULIPANES are handled above)
+    desc = re.sub(r"\*(?=[A-Z0-9]*\d)[A-Z0-9]+", "", desc, flags=re.IGNORECASE)
 
     # Remove store numbers (#XXXX)
     desc = re.sub(r"#\d+", "", desc)
 
-    # Remove references like "UNITED.COM", websites
-    desc = re.sub(r"[A-Z_]+\.COM\s*", "", desc)
-    
-    # Remove URLs and domains
-    desc = re.sub(r"(WWW\.|HTTP)\S+", "", desc)
+    # Remove URLs and domains (e.g. Amzn.com/bill, UNITED.COM, WWW.example.com)
+    desc = re.sub(r"\S+\.(?:com|net|org|io|co)(/\S*)?\s*", "", desc, flags=re.IGNORECASE)
+    desc = re.sub(r"(WWW\.|HTTP)\S+", "", desc, flags=re.IGNORECASE)
 
     # Remove phone numbers (XXX-XXX-XXXX, XXX-XXXX, (XXX) XXX-XXXX, etc)
     desc = re.sub(r"\d{3}-\d{3}-\d{4}", "", desc)
@@ -229,6 +222,20 @@ def _parse_transaction_amount(amount_str: str) -> Optional[float]:
         return None
 
 
+_FOOTER_MARKERS = (
+    "SEE REVERSE SIDE", "PLEASE DETACH", "BILLING RIGHTS",
+    "IMPORTANT INFORMATION", "ACCOUNT NUMBER ENDING",
+    "PAYMENT DUE DATE", "NEW BALANCE", "MINIMUM PAYMENT",
+    "TRANSACTIONS (CONTINUED)", "TRAN POST REFERENCE",
+    "PAGE 1 OF", "PAGE 2 OF", "PAGE 3 OF", "RETAIN UPPER",
+)
+
+# Amount pattern reused in both regexes
+_AMOUNT_PAT = r"-?\$?\(?\$?\d{1,3}(?:,\d{3})*\.\d{2}\)?"
+# Optional trailing reference number (alphanumeric, 10+ chars) before amount
+_REF_PAT = r"(?:\s+[A-Z0-9]{10,})?"
+
+
 def _parse_credit_card_text(text: str, statement_year: int) -> List[CreditCardTransaction]:
     """Parse credit card transaction rows from plain extracted PDF text."""
     transactions: List[CreditCardTransaction] = []
@@ -239,9 +246,15 @@ def _parse_credit_card_text(text: str, statement_year: int) -> List[CreditCardTr
         if not cleaned:
             continue
 
-        # Handle lines that begin with transaction date and post date
+        # Stop continuation accumulation at page footer / section headers
+        upper = cleaned.upper()
+        if any(m in upper for m in _FOOTER_MARKERS):
+            current_tx = None
+            continue
+
+        # Lines with tran date + post date + description (+ optional ref) + amount
         match = re.match(
-            r"^(\d{2}/\d{2})\s+(\d{2}/\d{2})\s+(.+?)\s+(-?\$?\(?\$?\d{1,3}(?:,\d{3})*\.\d{2}\)?)$",
+            rf"^(\d{{2}}/\d{{2}})\s+(\d{{2}}/\d{{2}})\s+(.+?){_REF_PAT}\s+({_AMOUNT_PAT})$",
             cleaned,
         )
         if match:
@@ -268,9 +281,9 @@ def _parse_credit_card_text(text: str, statement_year: int) -> List[CreditCardTr
                 current_tx = None
             continue
 
-        # Handle lines that begin with transaction date only and then description + amount
+        # Lines with tran date only + description (+ optional ref) + amount
         match = re.match(
-            r"^(\d{2}/\d{2})\s+(.+?)\s+(-?\$?\(?\$?\d{1,3}(?:,\d{3})*\.\d{2}\)?)$",
+            rf"^(\d{{2}}/\d{{2}})\s+(.+?){_REF_PAT}\s+({_AMOUNT_PAT})$",
             cleaned,
         )
         if match:
@@ -297,7 +310,7 @@ def _parse_credit_card_text(text: str, statement_year: int) -> List[CreditCardTr
                 current_tx = None
             continue
 
-        # Append continuation lines to the previous transaction description
+        # Append genuine continuation lines (e.g. wrapped merchant names)
         if current_tx and not re.match(r"^\d{2}/\d{2}", cleaned):
             current_tx.raw_description += " " + cleaned
             current_tx.merchant = _clean_merchant_name(current_tx.raw_description)
@@ -386,9 +399,13 @@ def parse_credit_card_bill_pdf(
                     if not re.match(r"\d{2}/\d{2}", tran_date_str):
                         if current_tx and any(cell for cell in row if cell):
                             continuation = " ".join(str(cell or "").strip() for cell in row if cell)
-                            current_tx.raw_description += " " + continuation
-                            current_tx.merchant = _clean_merchant_name(current_tx.raw_description)
-                            current_tx.location = _extract_location(current_tx.raw_description)
+                            upper = continuation.upper()
+                            if any(m in upper for m in _FOOTER_MARKERS):
+                                current_tx = None
+                            else:
+                                current_tx.raw_description += " " + continuation
+                                current_tx.merchant = _clean_merchant_name(current_tx.raw_description)
+                                current_tx.location = _extract_location(current_tx.raw_description)
                         i += 1
                         continue
 
