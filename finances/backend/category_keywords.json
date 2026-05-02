@@ -84,26 +84,8 @@
     "APPLE",
     "TST*FRANKO"
   ],
-  "Entertainment": [
-    "DINAH",
-    "CONCERT",
-    "CASEMENTS",
-    "PRIME",
-    "NORTHERN"
-  ],
-  "Utilities": [
-    "CSC SERVICE",
-    "ELECTRICITY",
-    "GAS",
-    "WATER"
-  ],
-  "Training": [
-    "COURSE",
-    "EDUCATION",
-    "STANFORD"
-  ],
-  "Laundry": [
-    "LAUNDRY",
-    "DRY CLEAN"
-  ]
+  "Entertainment": ["DINAH", "CONCERT", "CASEMENTS", "PRIME", "NORTHERN"],
+  "Utilities": ["CSC SERVICE", "ELECTRICITY", "GAS", "WATER", "XFINITY"],
+  "Training": ["COURSE", "EDUCATION", "STANFORD"],
+  "Laundry": ["LAUNDRY", "DRY CLEAN"]
 }
