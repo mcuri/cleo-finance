@@ -140,33 +140,39 @@ def _clean_merchant_name(description: str) -> str:
     # Remove store numbers (#XXXX)
     desc = re.sub(r"#\d+", "", desc)
 
-    # Remove URLs and domains (e.g. Amzn.com/bill, UNITED.COM, WWW.example.com)
-    desc = re.sub(r"\S+\.(?:com|net|org|io|co)(/\S*)?\s*", "", desc, flags=re.IGNORECASE)
-    desc = re.sub(r"(WWW\.|HTTP)\S+", "", desc, flags=re.IGNORECASE)
+    # Remove URLs: strip TLD + path but keep the domain word as the merchant name
+    # e.g. APPLE.COM/BILL → APPLE, Amzn.com/bill → Amzn, WWW.NETFLIX.COM → NETFLIX
+    desc = re.sub(r"(?:WWW\.)(\w+)\.(?:com|net|org|io|co)(/\S*)?\s*", r"\1 ", desc, flags=re.IGNORECASE)
+    desc = re.sub(r"(\b\w+)\.(?:com|net|org|io|co)(/\S*)?\s*", r"\1 ", desc, flags=re.IGNORECASE)
+    desc = re.sub(r"http\S+", "", desc, flags=re.IGNORECASE)
 
     # Remove phone numbers (XXX-XXX-XXXX, XXX-XXXX, (XXX) XXX-XXXX, etc)
     desc = re.sub(r"\d{3}-\d{3}-\d{4}", "", desc)
     desc = re.sub(r"\d{3}-\d{4}", "", desc)
     desc = re.sub(r"\(\d{3}\)\s*\d{3}-\d{4}", "", desc)
 
-    # Remove long alphanumeric reference sequences
-    # Remove 10+ digit sequences (reference numbers)
+    # Remove long numeric sequences (reference numbers)
     desc = re.sub(r"\s*\d{10,}\s*", " ", desc)
-    
-    # Remove patterns like "0162320966584" (numbers in middle of text)
     desc = re.sub(r"\s+\d{13,}\s+", " ", desc)
 
-    # Remove trailing numbers (but keep first word which might be important)
-    words = desc.split()
     # Remove trailing numeric-only words
+    words = desc.split()
     while words and words[-1].isdigit():
         words.pop()
     desc = " ".join(words)
 
-    # Cleanup remaining whitespace
-    desc = " ".join(desc.split()).strip()
+    # Second-pass: strip trailing state code left over after URL/phone removal
+    # (e.g. "APPLE CA" after stripping "APPLE.COM/BILL 866-712-7753")
+    # Only apply if it leaves a non-empty result
+    _STATE_CODES = {"CA", "TX", "NY", "WA", "MX", "US", "OR", "AZ", "FL", "IL", "MA", "CO"}
+    words = desc.split()
+    if len(words) >= 2 and words[-1].upper() in _STATE_CODES:
+        candidate = " ".join(words[:-1]).strip()
+        if candidate:
+            desc = candidate
 
-    # Title case
+    # Final whitespace cleanup + title case
+    desc = " ".join(desc.split()).strip()
     return desc.title()
 
 
