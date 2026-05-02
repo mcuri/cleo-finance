@@ -140,10 +140,10 @@ def _clean_merchant_name(description: str) -> str:
     # Remove store numbers (#XXXX)
     desc = re.sub(r"#\d+", "", desc)
 
-    # Remove URLs: strip TLD + path but keep the domain word as the merchant name
-    # e.g. APPLE.COM/BILL → APPLE, Amzn.com/bill → Amzn, WWW.NETFLIX.COM → NETFLIX
-    desc = re.sub(r"(?:WWW\.)(\w+)\.(?:com|net|org|io|co)(/\S*)?\s*", r"\1 ", desc, flags=re.IGNORECASE)
-    desc = re.sub(r"(\b\w+)\.(?:com|net|org|io|co)(/\S*)?\s*", r"\1 ", desc, flags=re.IGNORECASE)
+    # Remove URL paths but keep domain+TLD as merchant name
+    # e.g. APPLE.COM/BILL → APPLE.COM, Amzn.com/bill → Amzn.com, WWW.NETFLIX.COM → NETFLIX.COM
+    desc = re.sub(r"(?:WWW\.)(\w+\.(?:com|net|org|io|co))(/\S*)?\s*", r"\1 ", desc, flags=re.IGNORECASE)
+    desc = re.sub(r"(\b\w+\.(?:com|net|org|io|co))(/\S*)?\s*", r"\1 ", desc, flags=re.IGNORECASE)
     desc = re.sub(r"http\S+", "", desc, flags=re.IGNORECASE)
 
     # Remove phone numbers (XXX-XXX-XXXX, XXX-XXXX, (XXX) XXX-XXXX, etc)
@@ -173,7 +173,10 @@ def _clean_merchant_name(description: str) -> str:
 
     # Final whitespace cleanup + title case
     desc = " ".join(desc.split()).strip()
-    return desc.title()
+    result = desc.title()
+    # Keep TLD lowercase (title() would capitalise ".Com" → ".com")
+    result = re.sub(r"\.(Com|Net|Org|Io|Co)\b", lambda m: "." + m.group(1).lower(), result)
+    return result
 
 
 def _extract_location(description: str) -> str:

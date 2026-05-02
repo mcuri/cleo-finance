@@ -67,6 +67,20 @@
     "TRAINING",
     "FLAGSHIP"
   ],
+  "Subscriptions": [
+    "APPLE.COM",
+    "NETFLIX",
+    "SPOTIFY",
+    "HULU",
+    "DISNEY",
+    "YOUTUBE PREMIUM",
+    "AMAZON PRIME",
+    "CHATGPT",
+    "OPENAI",
+    "DROPBOX",
+    "ICLOUD",
+    "ADOBE"
+  ],
   "Shopping": [
     "AMAZON",
     "ROSS STORES",
@@ -81,7 +95,7 @@
     "SUN",
     "WARMING",
     "NIKE.COM",
-    "APPLE",
+    "APPLE STORE",
     "TST*FRANKO"
   ],
   "Entertainment": ["DINAH", "CONCERT", "CASEMENTS", "PRIME", "NORTHERN"],
