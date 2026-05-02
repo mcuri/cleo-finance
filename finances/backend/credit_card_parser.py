@@ -76,7 +76,7 @@ async def _infer_category_from_claude(description: str) -> str:
         f'Infer a single transaction category for this transaction description. '
         f'Respond with ONLY the category name (no explanation).\n\n'
         f'Description: {description}\n\n'
-        f'Categories: Travel, Groceries, Restaurants, Fitness, Shopping, Entertainment, '
+        f'Categories: Travel, Transport, Groceries, Restaurants, Fitness, Shopping, Entertainment, '
         f'Utilities, Training, Laundry, Medical, Subscriptions, Other'
     )
     response = client.messages.create(

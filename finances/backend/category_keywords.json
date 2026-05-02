@@ -1,0 +1,109 @@
+{
+  "Travel": [
+    "UNITED",
+    "JUSTFLY",
+    "HOTEL",
+    "SHERATON",
+    "AIRPORT",
+    "AIRBNB",
+    "EXPEDIA"
+  ],
+  "Transport": [
+    "UBER",
+    "LYFT",
+    "BAYWHEELS",
+    "CLIPPER",
+    "BART",
+    "MUNI",
+    "CALTRAIN",
+    "METRO",
+    "BUS",
+    "TAXI",
+    "WAYMO"
+  ],
+  "Groceries": [
+    "SAFEWAY",
+    "WHOLE FOODS",
+    "WHOLEFDS",
+    "TRADER JOES",
+    "WOODLANDS",
+    "KROGER",
+    "COSTCO",
+    "SPROUTS",
+    "MARKET",
+    "TRADER"
+  ],
+  "Restaurants": [
+    "CAFE",
+    "REST ",
+    "BOUDIN",
+    "BRASARTE",
+    "RESTAURANT",
+    "PIZZA",
+    "TACO",
+    "SUSHI",
+    "BISTRO",
+    "BAHIA",
+    "CILANTROS",
+    "SAJJ",
+    "TAQUERIAS",
+    "TST*EL",
+    "EATWELL",
+    "TRUE",
+    "ARSICAULT",
+    "LSU",
+    "STARBUCKS",
+    "TST*PARACHUTE",
+    "SHOW",
+    "DD",
+    "CHIPOTLE"
+  ],
+  "Fitness": [
+    "CRUNCH",
+    "GYM",
+    "YOGA",
+    "PELOTON",
+    "PLANET FITNESS",
+    "TRAINING",
+    "FLAGSHIP"
+  ],
+  "Shopping": [
+    "AMAZON",
+    "ROSS STORES",
+    "UNIQLO",
+    "TARGET",
+    "WALMART",
+    "COSTCO",
+    "MACY'S",
+    "BROKA",
+    "CYPRESS",
+    "IKEA",
+    "SUN",
+    "WARMING",
+    "NIKE.COM",
+    "APPLE",
+    "TST*FRANKO"
+  ],
+  "Entertainment": [
+    "DINAH",
+    "CONCERT",
+    "CASEMENTS",
+    "PRIME",
+    "NORTHERN"
+  ],
+  "Utilities": [
+    "CSC SERVICE",
+    "ELECTRICITY",
+    "GAS",
+    "WATER"
+  ],
+  "Training": [
+    "COURSE",
+    "EDUCATION",
+    "STANFORD"
+  ],
+  "Laundry": [
+    "LAUNDRY",
+    "DRY CLEAN"
+  ]
+}
