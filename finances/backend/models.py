@@ -4,7 +4,7 @@ from typing import Literal, Optional
 import uuid
 
 TransactionType = Literal["income", "expense"]
-TransactionSource = Literal["web", "csv", "telegram", "credit_card", "payslip"]
+TransactionSource = Literal["web", "csv", "telegram", "credit_card", "payslip", "rental_bill"]
 
 
 class TransactionCreate(BaseModel):
