@@ -1,5 +1,6 @@
 import os
 import logging
+from contextlib import asynccontextmanager
 from logging.handlers import RotatingFileHandler
 from fastapi import FastAPI, Depends, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,6 +14,7 @@ from backend.telegram_bot import router as telegram_router
 from backend.chat import router as chat_router
 from backend.models import Transaction
 from backend.sheets import SheetsClient
+import backend.scheduler as _scheduler
 
 # Set up file logging for the app
 logs_dir = os.path.join(os.path.dirname(__file__), "..", "logs")
@@ -29,7 +31,14 @@ logging.basicConfig(
     handlers=[console_handler, file_handler],
 )
 
-app = FastAPI(title="Finance Tracker")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    _scheduler.start()
+    yield
+    _scheduler.stop()
+
+
+app = FastAPI(title="Finance Tracker", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

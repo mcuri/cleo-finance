@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     app_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:5173"
     google_service_account_json: str = ""
+    telegram_user_chat_id: int = 0
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
 
