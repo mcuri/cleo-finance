@@ -368,6 +368,7 @@ def parse_credit_card_bill_pdf(
 
         for page in pdf.pages:
             tables = page.extract_tables() or []
+            logger.debug("CC page %d: %d tables found", page.page_number, len(tables))
             for table in tables:
                 if not table or len(table) < 2:
                     continue
@@ -384,6 +385,7 @@ def parse_credit_card_bill_pdf(
                         break
 
                 if not header or data_start_idx is None:
+                    logger.debug("CC table on page %d: no tran-date header found, header row: %s", page.page_number, table[0] if table else [])
                     continue
 
                 column_map = {}
@@ -464,7 +466,12 @@ def parse_credit_card_bill_pdf(
                     i += 1
 
         if not transactions:
-            full_text = "\n".join(page.extract_text() or "" for page in pdf.pages)
+            pages_text = []
+            for page in pdf.pages:
+                t = page.extract_text() or ""
+                pages_text.append(t)
+            full_text = "\n".join(pages_text)
+            logger.debug("CC text fallback, first 500 chars: %s", full_text[:500])
             transactions = _parse_credit_card_text(full_text, statement_year)
 
     logger.info(f"Parsed {len(transactions)} transactions from credit card PDF")

@@ -96,8 +96,13 @@ def _call_claude_extract(exchange: str, current_profile: str) -> dict:
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        logger.warning("Profile extractor: unexpected Claude response: %s", raw)
-        return {"update": False}
+        # Claude sometimes emits Python-style booleans; normalize and retry
+        normalized = raw.replace("True", "true").replace("False", "false")
+        try:
+            return json.loads(normalized)
+        except json.JSONDecodeError:
+            logger.warning("Profile extractor: unexpected Claude response: %s", raw)
+            return {"update": False}
 
 
 async def extract_and_update_profile(
