@@ -178,17 +178,17 @@ export default function TransactionList() {
                         <tr style={{ background: "var(--surface, #f9f9f9)" }}>
                           <td><input type="date" value={editForm.date} onChange={set("date")} style={inputStyle} /></td>
                           <td><input type="text" value={editForm.merchant} onChange={set("merchant")} style={inputStyle} /></td>
-                          <td style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>
-                            <select value={editForm.category} onChange={set("category")} style={inputStyle}>
-                              {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                            </select>
-                          </td>
                           <td style={{ textAlign: "right" }}>
                             <input
                               type="number" step="0.01" min="0.01"
                               value={editForm.amount} onChange={set("amount")}
                               style={{ ...inputStyle, textAlign: "right", width: "6rem" }}
                             />
+                          </td>
+                          <td style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>
+                            <select value={editForm.category} onChange={set("category")} style={inputStyle}>
+                              {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                            </select>
                           </td>
                           <td>
                             <select value={editForm.type} onChange={set("type")} style={inputStyle}>
@@ -225,10 +225,10 @@ export default function TransactionList() {
                     <tr key={t.id} onClick={() => handleEdit(t)} style={{ cursor: "pointer" }}>
                       <td style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>{t.date}</td>
                       <td>{t.merchant}</td>
-                      <td style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>{t.category}</td>
                       <td style={{ textAlign: "right" }} className={t.type === "income" ? "amount-income" : "amount-expense"}>
                         {t.type === "income" ? "+" : "-"}${t.amount.toFixed(2)}
                       </td>
+                      <td style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>{t.category}</td>
                       <td style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>{t.type}</td>
                       <td style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>{t.source}</td>
                       <td>
