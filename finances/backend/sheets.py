@@ -96,7 +96,7 @@ class SheetsClient:
         rows = result.get("values", [])
         transactions = []
         for row in rows:
-            if len(row) < 7:
+            if len(row) < 7 or not row[1]:
                 continue
             transactions.append(Transaction(
                 id=row[0],

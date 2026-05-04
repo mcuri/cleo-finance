@@ -29,7 +29,7 @@ def parse_payslip(pdf_bytes: bytes) -> List[ParsedPayslip]:
     b64 = base64.standard_b64encode(pdf_bytes).decode()
     response = client.messages.create(
         model=_MODEL,
-        max_tokens=2048,
+        max_tokens=8192,
         system=_SYSTEM,
         messages=[{
             "role": "user",
