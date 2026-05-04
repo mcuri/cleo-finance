@@ -9,7 +9,7 @@ import anthropic
 from fastapi import APIRouter, Header, HTTPException, Request
 
 from backend.anthropic_logger import log_usage
-from backend.chat import _SYSTEM, _is_credit_card_bill, _is_payslip
+from backend.chat import _SYSTEM, _is_credit_card_bill, _is_payslip, _is_rental_bill
 from backend.claude_parser import parse_expense_text, parse_pdf_statement, parse_receipt_image
 from backend.config import get_settings
 from backend.models import ParsedExpense, Transaction, TransactionCreate
@@ -217,6 +217,10 @@ async def _handle_document(chat_id: int, file_id: str, file_name: str) -> None:
             )
         except Exception as e:
             logger.warning(f"Drive upload failed for payslip: {e}")
+    elif _is_rental_bill(file_bytes):
+        from backend.rental_bill_parser import parse_rental_bill_pdf
+        saved, skipped = _save_expenses(parse_rental_bill_pdf(file_bytes), sheets)
+        result = _build_result(saved, skipped)
     else:
         saved, skipped = _save_expenses(parse_pdf_statement(file_bytes), sheets)
         result = _build_result(saved, skipped)

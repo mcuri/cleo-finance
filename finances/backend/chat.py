@@ -111,6 +111,21 @@ def _is_payslip(file_bytes: bytes) -> bool:
     return False
 
 
+def _is_rental_bill(file_bytes: bytes) -> bool:
+    """Detect a Conservice-style rental + utility bill."""
+    markers = {"utility statement", "current rent", "service period", "rent service fee"}
+    try:
+        import pdfplumber
+        import io as _io
+        with pdfplumber.open(_io.BytesIO(file_bytes)) as pdf:
+            if pdf.pages:
+                text = (pdf.pages[0].extract_text() or "").lower()
+                return sum(1 for m in markers if m in text) >= 2
+    except Exception as e:
+        logger.warning(f"Error detecting rental bill: {e}")
+    return False
+
+
 def _save_expenses(
     parsed_list: List[ParsedExpense],
     sheets: SheetsClient,
@@ -237,6 +252,9 @@ async def chat(
                     )
                 except Exception as e:
                     logger.warning(f"Drive upload failed for payslip: {e}")
+            elif _is_rental_bill(file_bytes):
+                from backend.rental_bill_parser import parse_rental_bill_pdf
+                saved, skipped_count = _save_expenses(parse_rental_bill_pdf(file_bytes), sheets)
             else:
                 # Generic PDF statement parser
                 saved, skipped_count = _save_expenses(
