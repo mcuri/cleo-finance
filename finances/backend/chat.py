@@ -73,26 +73,18 @@ def _is_credit_card_bill(file_bytes: bytes) -> bool:
         logger.warning("pdfplumber is not installed; skipping credit card bill detection")
         return False
 
+    # Markers that unambiguously identify a credit card statement
+    _CC_STRONG = {"stanford fcu", "tran date", "available credit", "statement closing date"}
+    # Markers that are suggestive but also appear on utility/rental bills — require 2+
+    _CC_WEAK = {"credit union", "minimum payment", "previous balance", "new balance"}
+
     try:
         with pdfplumber.open(io.BytesIO(file_bytes)) as pdf:
             for page in pdf.pages:
-                text = page.extract_text() or ""
-                lower = text.lower()
-                # Check for credit card / statement markers
-                if any(
-                    marker in lower
-                    for marker in [
-                        "stanford fcu",
-                        "credit union",
-                        "statement closing date",
-                        "new balance",
-                        "minimum payment",
-                        "previous balance",
-                        "available credit",
-                        "amount due",
-                        "tran date",
-                    ]
-                ):
+                text = (page.extract_text() or "").lower()
+                if any(m in text for m in _CC_STRONG):
+                    return True
+                if sum(1 for m in _CC_WEAK if m in text) >= 2:
                     return True
     except Exception as e:
         logger.warning(f"Error detecting credit card bill: {e}")
