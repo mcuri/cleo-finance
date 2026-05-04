@@ -1,8 +1,6 @@
 import asyncio
 import json
 import logging
-from datetime import date as date_type
-from pathlib import Path
 
 import anthropic
 
@@ -10,63 +8,27 @@ from backend.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-_NOTES_FILE = Path(__file__).parent.parent / "user-finance-notes.md"
 _MODEL = "claude-haiku-4-5-20251001"
-_PROFILE_HEADING = "## Current Profile"
-_LOG_HEADING = "## Observations Log"
 
 
-def load_user_profile(notes_file: Path = _NOTES_FILE) -> str:
-    if not notes_file.exists():
+def _get_sheets():
+    from backend.sheets import SheetsClient
+    return SheetsClient(spreadsheet_id=get_settings().google_sheets_id)
+
+
+def load_user_profile() -> str:
+    try:
+        return _get_sheets().get_profile()
+    except Exception as e:
+        logger.warning("Could not load profile from Sheets: %s", e)
         return ""
-    content = notes_file.read_text()
-    start = content.find(_PROFILE_HEADING)
-    if start == -1:
-        return ""
-    nl = content.find("\n", start)
-    if nl == -1:
-        return ""
-    section_start = nl + 1
-    if content[section_start:].startswith("_Last updated"):
-        nl2 = content.find("\n", section_start)
-        if nl2 == -1:
-            return ""
-        section_start = nl2 + 1
-    end = len(content)
-    for marker in ["\n---", "\n## "]:
-        pos = content.find(marker, section_start)
-        if pos != -1 and pos < end:
-            end = pos
-    return content[section_start:end].strip()
 
 
-def _write_profile_and_log(new_profile: str, log_entry: str, notes_file: Path = _NOTES_FILE) -> None:
-    today = date_type.today().isoformat()
-    content = notes_file.read_text() if notes_file.exists() else ""
-    profile_block = f"{_PROFILE_HEADING}\n_Last updated: {today}_\n\n{new_profile}\n"
-    log_line = f"- **{today}**: {log_entry}"
-
-    if _PROFILE_HEADING in content:
-        start = content.find(_PROFILE_HEADING)
-        next_sep = content.find("\n---", start)
-        if next_sep == -1:
-            content = content[:start] + profile_block
-        else:
-            content = content[:start] + profile_block + content[next_sep:]
-    else:
-        content = content.rstrip() + f"\n\n---\n\n{profile_block}"
-
-    if _LOG_HEADING in content:
-        log_start = content.find(_LOG_HEADING)
-        next_sep = content.find("\n---", log_start + len(_LOG_HEADING))
-        if next_sep == -1:
-            content = content.rstrip() + f"\n{log_line}\n"
-        else:
-            content = content[:next_sep].rstrip() + f"\n{log_line}" + content[next_sep:]
-    else:
-        content = content.rstrip() + f"\n\n---\n\n{_LOG_HEADING}\n\n{log_line}\n"
-
-    notes_file.write_text(content)
+def _write_profile_and_log(new_profile: str, log_entry: str) -> None:
+    try:
+        _get_sheets().update_profile(new_profile, log_entry)
+    except Exception as e:
+        logger.warning("Could not write profile to Sheets: %s", e)
 
 
 def _call_claude_extract(exchange: str, current_profile: str) -> dict:
@@ -96,7 +58,6 @@ def _call_claude_extract(exchange: str, current_profile: str) -> dict:
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
-        # Claude sometimes emits Python-style booleans; normalize and retry
         normalized = raw.replace("True", "true").replace("False", "false")
         try:
             return json.loads(normalized)
@@ -105,15 +66,15 @@ def _call_claude_extract(exchange: str, current_profile: str) -> dict:
             return {"update": False}
 
 
-async def extract_and_update_profile(
-    user_message: str, assistant_reply: str, notes_file: Path = _NOTES_FILE
-) -> None:
+async def extract_and_update_profile(user_message: str, assistant_reply: str) -> None:
     try:
-        current_profile = load_user_profile(notes_file)
+        current_profile = load_user_profile()
         exchange = f"[USER]\n{user_message}\n\n[ASSISTANT]\n{assistant_reply}"
         loop = asyncio.get_running_loop()
         result = await loop.run_in_executor(None, _call_claude_extract, exchange, current_profile)
         if result.get("update") and result.get("profile") and result.get("log_entry"):
-            _write_profile_and_log(result["profile"], result["log_entry"], notes_file)
+            await loop.run_in_executor(
+                None, _write_profile_and_log, result["profile"], result["log_entry"]
+            )
     except Exception as e:
         logger.warning("Profile extraction failed: %s", e)

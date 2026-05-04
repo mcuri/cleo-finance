@@ -22,7 +22,7 @@ def init():
     svc = build_service()
     vals = svc.spreadsheets().values()
 
-    for title in ("Transactions", "Categories", "Logs", "Payslips"):
+    for title in ("Transactions", "Categories", "Logs", "Payslips", "Profile"):
         _ensure_sheet(svc, settings.google_sheets_id, title)
 
     vals.update(
@@ -57,7 +57,14 @@ def init():
             "Net Pay", "Employee 401k", "Employer 401k Match", "Life@ Choice",
         ]]},
     ).execute()
-    print("Sheets initialised (Transactions, Categories, Logs, Payslips).")
+    vals.update(
+        spreadsheetId=settings.google_sheets_id,
+        range="Profile!A1:B3",
+        valueInputOption="RAW",
+        body={"values": [["profile", ""], ["updated", ""], ["date", "observation"]]},
+    ).execute()
+
+    print("Sheets initialised (Transactions, Categories, Logs, Payslips, Profile).")
 
 if __name__ == "__main__":
     init()

@@ -232,3 +232,31 @@ class SheetsClient:
             valueInputOption="RAW",
             body={"values": [row]},
         ).execute()
+
+    def get_profile(self) -> str:
+        """Return current profile text from the Profile sheet, or empty string."""
+        try:
+            result = self._values().get(
+                spreadsheetId=self.spreadsheet_id,
+                range="Profile!B1",
+            ).execute()
+            rows = result.get("values", [])
+            return rows[0][0] if rows and rows[0] else ""
+        except Exception:
+            return ""
+
+    def update_profile(self, profile: str, log_entry: str) -> None:
+        """Overwrite profile text and append a dated log entry."""
+        today = date_type.today().isoformat()
+        self._values().update(
+            spreadsheetId=self.spreadsheet_id,
+            range="Profile!A1:B2",
+            valueInputOption="RAW",
+            body={"values": [["profile", profile], ["updated", today]]},
+        ).execute()
+        self._values().append(
+            spreadsheetId=self.spreadsheet_id,
+            range="Profile!A:B",
+            valueInputOption="RAW",
+            body={"values": [[today, log_entry]]},
+        ).execute()
